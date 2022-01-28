@@ -15,7 +15,7 @@ from hazard.rshalib.source.read_from_gis import import_source_model_from_gis
 ## Folder locations
 login_name = os.getlogin()
 if login_name == 'kris':
-	project_folder = ""
+	project_folder = r"C:\Users\kris\Documents\Projects\2022 - Castor-Pollux"
 	data_points = "Castor-points"
 	LOFZ_model = "LOFZ_breukenmodel4.TAB"
 elif login_name == 'kwils':
@@ -390,7 +390,7 @@ def read_evidence_site_info_from_txt(filespec):
 	"""
 	pe_thresholds, ne_thresholds = [], []
 	pe_sites, ne_sites = [],[]
-	
+
 	lons, lats = [], []
 	with open(filespec) as f:
 		for line in f:
@@ -409,14 +409,14 @@ def read_evidence_site_info_from_txt(filespec):
 			elif line:
 				if line[-1] in ('W', 'E', 'N', 'S'):
 					deg = float(line[:-1])
-					
+
 					if line[-1] in ('W', 'S'):
 						deg = -deg
 					if line[-1] in ('W', 'E'):
 						lons.append(deg)
 					else:
 						lats.append(deg)
-						
+
 	pe_site_models = []
 	for p, pe_sites in enumerate(pe_sites):
 		name = "Positive evidence #%d (I>%.1f)" % (p+1, pe_thresholds[p])
@@ -700,4 +700,3 @@ def plot_rupture_probabilities(source_model, prob_dict, pe_site_models, ne_site_
 	else:
 		dpi = 90
 	map.plot(fig_filespec=fig_filespec, dpi=dpi)
-
