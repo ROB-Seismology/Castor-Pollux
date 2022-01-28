@@ -16,8 +16,8 @@ event = "~4400 cal yrs BP"
 
 
 ## Selected magnitude for final figure in paper
-event_mags = {'~4400 cal yrs BP':[5.13, 5.72, 6.07, 6.35, 6.55, 6.76, 6.96, 7.17, 7.37]}
-
+#event_mags = {'~4400 cal yrs BP':[5.13, 5.72, 6.07, 6.35, 6.55, 6.76, 6.96, 7.17, 7.37]}
+event_mags = {'~4400 cal yrs BP':[6.55]}
 
 ## IPE names
 ipe_names = ["BakunWentworth1997WithSigma"]
@@ -58,8 +58,6 @@ for M, source_model in read_fault_source_model_as_network(fault_filespec, dM=dM)
 	fault_mags.append(M)
 	fault_networks.append(source_model)
 	
-## Increase possible magnitudes!
-
 #calculations
 max_prob_dict = {}
 section_prob_dict = {}
@@ -82,7 +80,7 @@ for pe_site_model, pe_threshold in zip(pe_site_models, pe_thresholds):
 for ne_site_model, ne_threshold in zip(ne_site_models, ne_thresholds):
 	print("-%s (n=%d): %s" % (ne_site_model.name.encode(errors='replace'), len(ne_site_model), ne_threshold))
 
-## Additional constraint: intensities must be 7.5 or higher in Aysén catchment
+## Additional constraint: intensities must be 7.5 or higher in Aysén catchment (or as point in catchment)
 
 ## Construct ground-motion model
 for ipe_name in ipe_names:

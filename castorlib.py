@@ -408,7 +408,6 @@ def read_evidence_site_info_from_txt(filespec):
 				lons, lats = [], []
 			elif line:
 				if line[-1] in ('W', 'E', 'N', 'S'):
-					#### why should this be an integer????
 					deg = float(line[:-1])
 					
 					if line[-1] in ('W', 'S'):
