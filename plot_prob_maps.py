@@ -83,7 +83,6 @@ for ne_site_model, ne_threshold in zip(ne_site_models, ne_thresholds):
 	print("-%s (n=%d): %s" % (ne_site_model.name.encode(errors='replace'), len(ne_site_model), ne_threshold))
 
 ## Additional constraint: intensities must be 7.5 or higher in Aysén catchment
-## define 'polygon'?
 
 ## Construct ground-motion model
 for ipe_name in ipe_names:

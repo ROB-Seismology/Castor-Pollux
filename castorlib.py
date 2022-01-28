@@ -19,7 +19,7 @@ if login_name == 'kris':
 	data_points = "Castor-points"
 	LOFZ_model = "LOFZ_breukenmodel4.TAB"
 elif login_name == 'kwils':
-	project_folder = r'C:\Users\kwils.UGENT\OneDrive - UGent\Ground motions'
+	project_folder = r"C:\Users\kwils.UGENT\OneDrive - UGent\Ground motions"
 	data_points = "Castor-points"
 	LOFZ_model = "LOFZ-faultmodel.TAB"
 gis_folder = os.path.join(project_folder, "Input data", "GIS")
