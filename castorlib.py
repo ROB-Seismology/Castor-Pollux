@@ -16,8 +16,8 @@ from hazard.rshalib.source.read_from_gis import import_source_model_from_gis
 login_name = os.getlogin()
 if login_name == 'kris':
 	project_folder = ""
-	data_points = ""
-	LOFZ_model = ""
+	data_points = "Castor-points"
+	LOFZ_model = "LOFZ_breukenmodel4.TAB"
 elif login_name == 'kwils':
 	project_folder = r'C:\Users\kwils.UGENT\OneDrive - UGent\Ground motions'
 	data_points = "Castor-points"
