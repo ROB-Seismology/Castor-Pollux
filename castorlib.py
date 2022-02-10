@@ -420,16 +420,16 @@ def read_evidence_site_info_from_txt(filespec):
 						lats.append(deg)
 
 	pe_site_models = []
-	for p, pe_sites in enumerate(pe_sites):
+	for p, pe_site in enumerate(pe_sites):
 		name = "Positive evidence #%d (I>%.1f)" % (p+1, pe_thresholds[p])
-		site = rshalib.site.SoilSite(pe_sites.longitude, pe_sites.latitude)
+		site = rshalib.site.SoilSite(pe_site.longitude, pe_site.latitude)
 		site_model = rshalib.site.SoilSiteModel([site], name)
 		pe_site_models.append(site_model)
 
 	ne_site_models = []
-	for n, ne_sites in enumerate(ne_sites):
+	for n, ne_site in enumerate(ne_sites):
 		name = "Negative evidence #%d (I<%.1f)" % (n+1, ne_thresholds[n])
-		site = rshalib.site.SoilSite(ne_sites.longitude, ne_sites.latitude)
+		site = rshalib.site.SoilSite(ne_site.longitude, ne_site.latitude)
 		site_model = rshalib.site.SoilSiteModel([site], name)
 		ne_site_models.append(site_model)
 
@@ -596,7 +596,7 @@ def plot_rupture_probabilities(source_model, prob_dict, pe_site_models, ne_site_
 	style = lbm.LineStyle()
 	layer = lbm.MapLayer(data, style)
 	layers.append(layer)
-	
+
 	## Add faults
 	gis_filespec = os.path.join(gis_folder, fault_model)
 	data = lbm.GisData(gis_filespec)
@@ -618,6 +618,7 @@ def plot_rupture_probabilities(source_model, prob_dict, pe_site_models, ne_site_
 	thematic_color.color_map.set_bad(thematic_color.color_map(0))
 
 	if source_model.get_point_sources() and not plot_point_ruptures:
+		dM = source.mfd.bin_width
 		edge_magnitudes = np.concatenate([source.mfd.get_magnitude_bin_edges(), [center_magnitudes[-1]+dM/2]])
 		mag_sizes = (center_magnitudes - 4) ** 2
 		thematic_size = lbm.ThematicStyleRanges(edge_magnitudes, mag_sizes, value_key='mag', labels=center_magnitudes)
@@ -848,7 +849,7 @@ def plot_gridsearch_map(grd_source_model, mag_grid, rms_grid, pe_site_models,
 	style = lbm.LineStyle(line_color='k')
 	layer = lbm.MapLayer(data, style)
 	layers.append(layer)
-	
+
 	## Aysen catchment
 	catchment = "Aysen_watershed"
 	gis_filespec = os.path.join(gis_folder, "%s.shp" % catchment)
