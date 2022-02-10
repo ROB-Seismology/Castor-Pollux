@@ -8,8 +8,6 @@ sys.path.append(SCRIPT_DIR)
 from castorlib import *
 from create_animated_gif import create_animated_gif
 
-base_fig_folder = os.path.join(project_folder, "Projects", "Castor-Pollux", "Figures")
-
 ## Event names
 event = "~4400 cal yrs BP"
 

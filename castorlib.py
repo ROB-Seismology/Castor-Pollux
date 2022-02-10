@@ -18,10 +18,12 @@ if login_name == 'kris':
 	project_folder = r"C:\Users\kris\Documents\Projects\2022 - Castor-Pollux"
 	data_points = "Castor-points"
 	LOFZ_model = "LOFZ_breukenmodel4.TAB"
+	base_fig_folder = os.path.join(project_folder, 'Figures')
 elif login_name == 'kwils':
 	project_folder = r"C:\Users\kwils.UGENT\OneDrive - UGent\Ground motions"
 	data_points = "Castor-points"
 	fault_model = "Chile-faults.TAB"
+	base_fig_folder = os.path.join(project_folder, "Projects", "Castor-Pollux", "Figures")
 gis_folder = os.path.join(project_folder, "Input data", "GIS")
 
 ## Common parameters for area and fault sources
