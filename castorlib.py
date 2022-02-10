@@ -21,9 +21,8 @@ if login_name == 'kris':
 elif login_name == 'kwils':
 	project_folder = r"C:\Users\kwils.UGENT\OneDrive - UGent\Ground motions"
 	data_points = "Castor-points"
-	LOFZ_model = "LOFZ-faultmodel.TAB"
+	fault_model = "Chile-faults.TAB"
 gis_folder = os.path.join(project_folder, "Input data", "GIS")
-
 
 ## Common parameters for area and fault sources
 TRT = "ASC"
@@ -283,7 +282,7 @@ def read_fault_source_model_as_floating_ruptures(gis_filespec, min_mag, max_mag,
 	return rshalib.source.SourceModel(somo_name, sources)
 
 
-def read_fault_source_model_as_network(gis_filespec, section_len=2.85, dM=0.2,
+def read_fault_source_model_as_network(gis_filespec, section_len=0.8, dM=0.2,
 					num_sections=None, max_strike_delta=60, characteristic=True):
 	"""
 	Read fault source model as network, containing all possible connections
@@ -324,8 +323,9 @@ def read_fault_source_model_as_network(gis_filespec, section_len=2.85, dM=0.2,
 	print("Constructing fault network...")
 	for flt in fault_somo:
 		flt.rupture_mesh_spacing = section_len
+		#print(flt.get_length())
 	allow_triple_junctions = False
-	flt_network = fault_somo.get_fault_network(allow_triple_junctions=allow_triple_junctions, max_strike_delta=max_strike_delta)
+	flt_network = fault_somo.get_fault_network(max_gap=1, allow_triple_junctions=allow_triple_junctions, max_strike_delta=max_strike_delta)
 	flt_network.check_consistency()
 	print("Determining all possible connections...")
 	connections = flt_network.get_all_connections(100, allow_triple_junctions=allow_triple_junctions)
@@ -445,7 +445,7 @@ def plot_rupture_probabilities(source_model, prob_dict, pe_site_models, ne_site_
 	Generate map of rupture probabilities
 
 	:param source_model:
-		instance of :class:`rshalib.source.SourceModel`
+		list of instances of :class:`rshalib.source.SourceModel`
 	:param prob_dict:
 		dict, mapping source IDs to probabilities (corresponding to center
 		magnitudes of their MFD)
@@ -500,6 +500,7 @@ def plot_rupture_probabilities(source_model, prob_dict, pe_site_models, ne_site_
 	x, y = [], []
 	values = {'mag': [], 'prob': []}
 	PROB_MIN = 1E-5
+	mag_max_prob_id_dict = {}
 	if source_model.get_point_sources():
 		## Point sources and discretized fault sources
 		for source_id, probs in prob_dict.items():
@@ -559,7 +560,6 @@ def plot_rupture_probabilities(source_model, prob_dict, pe_site_models, ne_site_
 		source_data = lbm.MultiLineData(x, y, values=values)
 		## Find rupture with highest probability for each magnitude
 		if highlight_max_prob_section and source_model.get_fault_sources():
-			mag_max_prob_id_dict = {}
 			for idx in idxs:
 				mag = np.round(values['mag'][idx], max_prob_mag_precision)
 				prob = values['prob'][idx]
@@ -593,6 +593,13 @@ def plot_rupture_probabilities(source_model, prob_dict, pe_site_models, ne_site_
 	data = lbm.BuiltinData("coastlines")
 	style = lbm.LineStyle()
 	layer = lbm.MapLayer(data, style)
+	layers.append(layer)
+	
+	## Add faults
+	gis_filespec = os.path.join(gis_folder, fault_model)
+	data = lbm.GisData(gis_filespec)
+	style = lbm.LineStyle(line_color='grey', line_width=1.25)
+	layer = lbm.MapLayer(data, style, legend_label="Faults")
 	layers.append(layer)
 
 	## Sources
@@ -700,3 +707,245 @@ def plot_rupture_probabilities(source_model, prob_dict, pe_site_models, ne_site_
 	else:
 		dpi = 90
 	map.plot(fig_filespec=fig_filespec, dpi=dpi)
+
+def plot_gridsearch_map(grd_source_model, mag_grid, rms_grid, pe_site_models,
+						ne_site_models, region=None, colormap="RdYlGn_r",
+						title=None, text_box=None, site_model_gis_file=None,
+						neutral_site_models=[], plot_rms_as_alpha=False,
+						plot_epicenter_as="area", fig_filespec=None):
+	"""
+	Generate map of rupture probabilities
+
+	:param grd_source_model:
+		instance of :class:`rshalib.source.SourceModel`, grid source model
+	:param mag_grid:
+		2-D array, mesh of magnitudes calculated with -search method
+	:param rms_grid:
+		2-D array of RMS errors corresponding to :param:`mag_grid`
+	:param pe_site_models:
+	:param ne_site_models:
+		list with instances of :class:`rshalib.site.SoilSiteModel`,
+		site models with positive/negative evidence
+	:param region:
+		(min_lon, max_lon, min_lat, max_lat), map region
+	:param colormap:
+		str, name of matplotlib colormap to use for probabilities
+		(default: "RdBu_r")
+	:param title:
+		str, plot title
+		(default: None)
+	:param text_box:
+		str, text to add in separate box
+		(default: None)
+	:param site_model_gis_file:
+		str, full path to GIS file containing sites with shaking evidence
+		(necessary to plot polygons that have been discretized into points)
+		(default: None)
+	:param neutral_site_models:
+		list with instances of :class:`rshalib.site.SoilSiteModel`,
+		site models with no evidence
+		(default: [])
+	:param plot_rms_as_alpha:
+		bool, whether to plot RMS errors as transparency (True) or as an
+		additional set of contour lines (False)
+		(default: False)
+	:param plot_epicenter_as:
+		str, how to plot the estimated epicenter: 'point', 'area' or 'both'
+		(default: 'area')
+	:param fig_filespec:
+		str, full path to output file
+		(default: None, will plot on screen)
+	"""
+	layers = []
+
+	lon_grid, lat_grid = grd_source_model.lon_grid, grd_source_model.lat_grid
+	min_mag, max_mag = np.floor(np.nanmin(mag_grid)), np.ceil(np.nanmax(mag_grid))
+	max_mag = 7.5
+	if region is None:
+		region = grd_source_model.grid_outline
+
+	## Magnitude contours
+	grid_data = lbm.MeshGridData(lon_grid, lat_grid, mag_grid)
+	#colormap = "jet"
+	color_map_theme = lbm.ThematicStyleColormap(color_map=colormap, vmin=min_mag, vmax=max_mag)
+	color_map_theme.color_map.set_under('w')
+	colorbar_title = "Magnitude"
+	contour_levels = np.arange(min_mag, max_mag + 0.5, 0.5)
+	contour_line_style = lbm.LineStyle(label_style=lbm.TextStyle(font_size=10))
+	colorbar_style = lbm.ColorbarStyle(colorbar_title, format="%.1f")
+	if plot_rms_as_alpha:
+		grid_style = lbm.GridStyle(None, color_gradient=None, line_style=contour_line_style,
+									contour_levels=contour_levels, colorbar_style=None)
+	else:
+		grid_style = lbm.GridStyle(color_map_theme, color_gradient="continuous",
+					line_style=contour_line_style, contour_levels=contour_levels,
+					colorbar_style=colorbar_style)
+	layer = lbm.MapLayer(grid_data, grid_style)
+	layers.append(layer)
+
+	## RMS contours
+	if rms_grid is not None and not plot_rms_as_alpha:
+		grid_data = lbm.MeshGridData(lon_grid, lat_grid, rms_grid)
+		contour_levels = np.arange(0, 1, 0.1)
+		label_style = lbm.TextStyle(color='w', font_size=10)
+		contour_line_style = lbm.LineStyle(line_pattern='--', line_color='w',
+										line_width=0.75, label_style=label_style)
+		grid_style = lbm.GridStyle(None, color_gradient=None, line_style=contour_line_style,
+									contour_levels=contour_levels, colorbar_style=None,
+									label_format="%.1f")
+		layer = lbm.MapLayer(grid_data, grid_style)
+		layers.append(layer)
+
+	## Observation sites
+	## Read polygons from GIS file if specified
+	site_polygons = {}
+	if site_model_gis_file:
+		site_data = lbm.GisData(site_model_gis_file, label_colname='Name')
+		site_data = site_data.get_data()[-1]
+		for polygon in site_data:
+			site_polygons[polygon.label] = polygon
+
+	## Positive evidence
+	for pe_site_model in pe_site_models:
+		site_name = pe_site_model.name.split('(')[0].strip()
+		if site_name in site_polygons:
+			pe_data = site_polygons[site_name]
+			pe_style = lbm.PolygonStyle(line_width=0, fill_color='m', alpha=0.5)
+		else:
+			pe_style = lbm.PointStyle('+', size=8, line_width=1, line_color='m')
+			pe_data = lbm.MultiPointData(pe_site_model.lons, pe_site_model.lats)
+		layer = lbm.MapLayer(pe_data, pe_style)
+		layers.append(layer)
+
+	## Negative evidence
+	for ne_site_model in ne_site_models:
+		site_name = ne_site_model.name.split('(')[0].strip()
+		if site_name in site_polygons:
+			ne_data = site_polygons[site_name]
+			ne_style = lbm.PolygonStyle(line_width=0, fill_color='c', alpha=0.5)
+		else:
+			ne_style = lbm.PointStyle('_', size=8, line_width=1, line_color='c')
+			ne_data = lbm.MultiPointData(ne_site_model.lons, ne_site_model.lats)
+		layer = lbm.MapLayer(ne_data, ne_style)
+		layers.append(layer)
+
+	## Neutral
+	for site_model in neutral_site_models:
+		site_name = site_model.name.split('(')[0].strip()
+		if site_name in site_polygons:
+			site_data = site_polygons[site_name]
+			site_style = lbm.PolygonStyle(line_width=0, fill_color='gray', alpha=0.5)
+		else:
+			site_style = lbm.PointStyle('x', size=6, line_width=1, line_color='dimgrey')
+			site_data = lbm.MultiPointData(site_model.lons, site_model.lats)
+		layer = lbm.MapLayer(site_data, site_style)
+		layers.append(layer)
+
+	## Coastlines
+	data = lbm.BuiltinData("coastlines")
+	style = lbm.LineStyle(line_color='k')
+	layer = lbm.MapLayer(data, style)
+	layers.append(layer)
+	
+	## Aysen catchment
+	catchment = "Aysen_watershed"
+	gis_filespec = os.path.join(gis_folder, "%s.shp" % catchment)
+	data = lbm.GisData(gis_filespec)
+	style = lbm.PolygonStyle(line_color='skyblue', fill_color='lightblue', alpha=0.5)
+	layer = lbm.MapLayer(data, style)
+	layers.append(layer)
+
+	## Add faults
+	gis_filespec = os.path.join(gis_folder, fault_model)
+	data = lbm.GisData(gis_filespec)
+	style = lbm.LineStyle(line_color='grey', line_width=1.25)
+	layer = lbm.MapLayer(data, style, legend_label="Faults")
+	layers.append(layer)
+
+	## Add epicenter
+	if plot_epicenter_as in ("point", "both"):
+		idx = np.unravel_index(rms_grid.argmin(), rms_grid.shape)
+		point_data = lbm.PointData(lon_grid[idx], lat_grid[idx])
+		point_style = lbm.PointStyle(shape='*', fill_color='c', size=12)
+		layer = lbm.MapLayer(point_data, point_style)
+		layers.append(layer)
+
+	## or epicentral area
+	if plot_epicenter_as in ("area", "both"):
+		RMS_ZERO = False
+		if np.allclose(np.nanmax(rms_grid[rms_grid < 10]), 0):
+			rms_grid[rms_grid < 10] = 0
+			RMS_ZERO = True
+		grid_data = lbm.MeshGridData(lon_grid, lat_grid, rms_grid)
+		contour_levels = np.array([np.nanmin(rms_grid), np.nanmin(rms_grid) + 0.15])
+
+		## Hatch fill
+		#[contour_line] = grid_data.extract_contour_lines([np.nanmin(rms_grid) + 0.15])
+		#contour_line = lbm.MultiPolygonData(contour_line.lons, contour_line.lats,
+		#									values=contour_line.values)
+		[contour_mpg] = grid_data.extract_contour_intervals(contour_levels)
+		if RMS_ZERO:
+			## Hack: if all RMS are zero, outer polygon should correspond to map frame
+			lon0, lon1 = lon_grid.min(), lon_grid.max()
+			lat0, lat1 = lat_grid.min(), lat_grid.max()
+			contour_mpg.interior_lons = [contour_mpg.lons]
+			contour_mpg.interior_lats = [contour_mpg.lats]
+			contour_mpg.lons = [[lon0, lon0, lon1, lon1, lon0]]
+			contour_mpg.lats = [[lat0, lat1, lat1, lat0, lat0]]
+		polygon_style = lbm.PolygonStyle(line_pattern='-', line_color=None,
+										line_width=0, fill_hatch='\\', hatch_color='lawngreen',
+										fill_color="none")
+		"""
+		contour_line_style = lbm.LineStyle(line_pattern='-', line_color='c',
+										line_width=1, label_style=None, alpha=0)
+		grid_style = lbm.GridStyle(None, color_gradient=None, line_style=contour_line_style,
+									contour_levels=contour_levels, colorbar_style=None,
+									fill_hatches=['\\'])
+		layer = lbm.MapLayer(grid_data, grid_style)
+		"""
+		layer = lbm.MapLayer(contour_mpg, polygon_style)
+		layers.append(layer)
+
+		## Contour line
+		contour_line_style = lbm.LineStyle(line_pattern='-', line_color='lawngreen',
+										line_width=2, label_style=None, alpha=1)
+		grid_style = lbm.GridStyle(None, color_gradient=None, line_style=contour_line_style,
+									contour_levels=contour_levels, colorbar_style=None)
+		layer = lbm.MapLayer(grid_data, grid_style)
+		layers.append(layer)
+
+	legend_style = None
+	title = ""
+	map = lbm.LayeredBasemap(layers, title, projection="merc", region=region,
+			title_style=lbm.DefaultTitleTextStyle, graticule_style=lbm.GraticuleStyle(),
+			graticule_interval=(1, 0.5), resolution='h',
+			legend_style=legend_style)
+
+	## Alternative plotting of mag_grid, applying rms_grid as alpha values
+	if plot_rms_as_alpha:
+		greys = np.empty(mag_grid.shape + (3,), dtype=np.uint8)
+		greys.fill(255)
+		colors = color_map_theme(mag_grid)
+		if rms_grid is not None:
+			rms_max, rms_min = np.nanmax(rms_grid), np.nanmin(rms_grid)
+			#rms_min = 0
+			rms_max = max(1, rms_max)
+			rms_range = rms_max - rms_min
+			alphas = 1 - (rms_grid - rms_min) / rms_range
+			colors[..., -1] = alphas
+
+		map.map.imshow(greys)
+		map.map.imshow(colors)
+
+	## Add text box
+	if text_box:
+		pos = (0.965, 0.035)
+		text_style = lbm.TextStyle(font_size=14, horizontal_alignment='right',
+							vertical_alignment='bottom', multi_alignment='left',
+							background_color='w', border_color='k', border_pad=0.5)
+		map.draw_text_box(pos, text_box, text_style, zorder=10000)
+
+	if fig_filespec:
+		map.plot(fig_filespec=fig_filespec, dpi=200)
+
+	return map

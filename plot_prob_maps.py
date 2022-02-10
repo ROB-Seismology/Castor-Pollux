@@ -8,7 +8,6 @@ sys.path.append(SCRIPT_DIR)
 from castorlib import *
 from create_animated_gif import create_animated_gif
 
-from castorlib import (project_folder, gis_folder, data_points, LOFZ_model)
 base_fig_folder = os.path.join(project_folder, "Projects", "Castor-Pollux", "Figures")
 
 ## Event names
@@ -16,8 +15,8 @@ event = "~4400 cal yrs BP"
 
 
 ## Selected magnitude for final figure in paper
-#event_mags = {'~4400 cal yrs BP':[5.13, 5.72, 6.07, 6.35, 6.55, 6.76, 6.96, 7.17, 7.37]}
-event_mags = {'~4400 cal yrs BP':[6.55]}
+event_mags = {'~4400 cal yrs BP':[4.05, 4.64, 4.99, 5.23, 5.58, 5.82, 6.09, 6.31, 6.51, 6.72, 6.92]}
+#event_mags = {'~4400 cal yrs BP':[6.55]}
 
 ## IPE names
 ipe_names = ["BakunWentworth1997WithSigma"]
@@ -51,10 +50,11 @@ for M in fault_mags:
 """
 
 ## Discretize faults as network
-fault_filespec = os.path.join(gis_folder, LOFZ_model)
 dM = 0.2
 fault_mags, fault_networks = [], []
+fault_filespec = os.path.join(gis_folder, fault_model)
 for M, source_model in read_fault_source_model_as_network(fault_filespec, dM=dM):
+	#print(fault_mags, fault_networks)
 	fault_mags.append(M)
 	fault_networks.append(source_model)
 	
@@ -92,6 +92,7 @@ for ipe_name in ipe_names:
 
 
 for M, source_model in zip(fault_mags, fault_networks):
+	print(M)
 	## Compute rupture probabilities
 	prob_dict = calc_rupture_probability_from_ground_motion_thresholds(
 						source_model, gmpe_system_def, imt, pe_site_models,
@@ -129,14 +130,10 @@ for M, source_model in zip(fault_mags, fault_networks):
 	#fig_filespec = None
 
 	## Colormaps: RdBu_r, YlOrRd, BuPu, RdYlBu_r, Greys
-	for magnitude in event_mags[event]:
-		print(magnitude)
-		if np.isclose(M, magnitude, atol=0.01):
+	if np.isclose(M, magnitude, atol=0.01):
 			plot_rupture_probabilities(source_model, prob_dict, pe_site_models, ne_site_models,
 										map_region, plot_point_ruptures=True, colormap="RdYlBu_r",
-										title=title, text_box=text_box, site_model_gis_file=None,
-										fig_filespec=fig_filespec)
-
+										title=title, text_box=text_box,	fig_filespec=fig_filespec)
 
 ## Generate animated GIF
 
