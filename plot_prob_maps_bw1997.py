@@ -95,13 +95,9 @@ method = 'forward'
 (mag_grid, rms_grid) = (
 	estimate_epicenter_location_and_magnitude_from_intensities(
 	ipe_name, imt, grd_src_model, pe_sites, pe_thresholds,
-<<<<<<< HEAD
-	ne_sites, ne_thresholds, method="forward"))
-=======
 	ne_sites, ne_thresholds, method=method,
 	partial_pe_sites=partial_pe_sites, partial_pe_intensities=partial_pe_thresholds,
 	partial_pe_fraction=partial_pe_fraction))
->>>>>>> eccbc2ff430229998d1bb322b109adc964986c30
 idx = np.unravel_index(rms_grid.argmin(), rms_grid.shape)
 #print(mag_grid[idx], lon_grid[idx], lat_grid[idx])
 
@@ -126,14 +122,11 @@ map = plot_gridsearch_map(grd_src_model, mag_grid, rms_grid,
 						plot_rms_as_alpha=False, rms_is_prob=rms_is_prob,
 						plot_epicenter_as="area")
 
-<<<<<<< HEAD
-fig_filespec = os.path.join(fig_folder, "%s_bw1997_forward.%s" % (event, output_format))
+
+#fig_filespec = os.path.join(fig_folder, "%s_bw1997_forward.%s" % (event, output_format))
 #fig_filespec = None
-=======
 fig_filespec = os.path.join(fig_folder, "%s_%s_%s+watershed_10%%.%s")
 fig_filespec %= (event, ipe_name, method, output_format)
-fig_filespec = None
->>>>>>> eccbc2ff430229998d1bb322b109adc964986c30
 
 dpi = 200 if fig_filespec else 90
 map.plot(fig_filespec=fig_filespec, dpi=dpi)
