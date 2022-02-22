@@ -1,4 +1,3 @@
-
 import os, sys
 import numpy as np
 import openquake.hazardlib as oqhazlib
@@ -45,7 +44,7 @@ point_msr = oqhazlib.scalerel.PointMSR()
 wc1994_msr = oqhazlib.scalerel.WC1994()
 
 grd_src_model = SimpleUniformGridSourceModel(grid_outline, grid_spacing,
-			min_mag, min_mag + mag_bin_width, mag_bin_width, depth,
+			min_mag, max_mag + mag_bin_width, mag_bin_width, depth,
 			strike, dip, rake, wc1994_msr, USD, LSD, RMS, RAR, TRT)
 lon_grid, lat_grid = grd_src_model.lon_grid, grd_src_model.lat_grid
 
@@ -83,7 +82,7 @@ ne_thresholds = np.array(ne_thresholds)
 (mag_grid, rms_grid) = (
 	estimate_epicenter_location_and_magnitude_from_intensities(
 	ipe_name, imt, grd_src_model, pe_sites, pe_thresholds,
-	ne_sites, ne_thresholds, method="reverse", mag_bounds=(min_mag, max_mag)))
+	ne_sites, ne_thresholds, method="forward"))
 idx = np.unravel_index(rms_grid.argmin(), rms_grid.shape)
 #print(mag_grid[idx], lon_grid[idx], lat_grid[idx])
 
@@ -102,7 +101,7 @@ map = plot_gridsearch_map(grd_src_model, mag_grid, rms_grid,
 						text_box=text_box,
 						plot_rms_as_alpha=False, plot_epicenter_as="area")
 
-fig_filespec = os.path.join(fig_folder, "%s_bw1997.%s" % (event, output_format))
+fig_filespec = os.path.join(fig_folder, "%s_bw1997_forward.%s" % (event, output_format))
 #fig_filespec = None
 
 dpi = 200 if fig_filespec else 90
