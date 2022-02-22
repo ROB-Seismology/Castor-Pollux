@@ -18,6 +18,7 @@ if login_name == 'kris':
 	project_folder = r"C:\Users\kris\Documents\Projects\2022 - Castor-Pollux"
 	data_points = "Castor-points"
 	LOFZ_model = "LOFZ_breukenmodel4.TAB"
+	fault_model = "Chile-faults.TAB"
 	base_fig_folder = os.path.join(project_folder, 'Figures')
 elif login_name == 'kwils':
 	project_folder = r"C:\Users\kwils.UGENT\OneDrive - UGent\Ground motions"
@@ -375,6 +376,37 @@ def read_fault_source_model_as_network(gis_filespec, section_len=0.8, dM=0.2,
 		yield (M, rupture_model)
 
 
+def polygon_to_site_model(polygon, name, polygon_discretization):
+	"""
+	Create site model by discretizing given polygon
+
+	:param polygon:
+		instance of :class:`openquake.hazardlib.geo.Polygon`
+		or :class:`openquake.hazardlib.geo.Point`
+	:param name:
+		str, site model name
+	:param polygon_discretization:
+		float, site spacing (in km)
+
+	:return:
+		instance of :class:`rshalib.site.SoilSiteModel`
+	"""
+	if isinstance(polygon, oqhazlib.geo.Polygon):
+		try:
+			site_model = rshalib.site.SoilSiteModel.from_polygon(polygon,
+										polygon_discretization, name=name)
+		except:
+			polygon = lbm.PolygonData(polygon.lons, polygon.lats)
+			centroid = polygon.get_centroid()
+			site = rshalib.site.SoilSite(centroid.lon, centroid.lat)
+			site_model = rshalib.site.SoilSiteModel([site], name)
+	else:
+		point = polygon
+		site = rshalib.site.SoilSite(point.longitude, point.latitude)
+		site_model = rshalib.site.SoilSiteModel([site], name)
+	return site_model
+
+
 def read_evidence_site_info_from_txt(filespec):
 	"""
 	Read shaking evidence from different sites from text file
@@ -435,6 +467,51 @@ def read_evidence_site_info_from_txt(filespec):
 
 	pe_thresholds, ne_thresholds = np.array(pe_thresholds), np.array(ne_thresholds)
 	return pe_thresholds, pe_site_models, ne_thresholds, ne_site_models
+
+
+def read_evidence_sites_from_gis(gis_filespec, polygon_discretization=5):
+	"""
+	Read sites with shaking evidence (without actual intensity information)
+	from GIS file
+
+	:param gis_filespec:
+		str, full path to GIS file
+	:param polygon_discretization:
+		float, spacing (in km) to discretize polygonal sites
+		(default: 5)
+
+	:return:
+		list with instances of :class:`rshalib.site.SoilSiteModel`
+	"""
+	polygons = {}
+
+	for rec in read_gis_file(gis_filespec):
+		geom_type = rec["obj"].GetGeometryName()
+		if geom_type == "POLYGON":
+			obj = rec["obj"]
+			#obj = obj.Buffer(0.1)
+			obj = obj.GetGeometryRef(0)
+		elif geom_type == "POINT":
+			obj = rec["obj"]
+		else:
+			print(geom_type)
+			continue
+
+		site_name = rec.get("Name", rec.get("NAME", ""))
+		if not site_name in polygons:
+			points = [oqhazlib.geo.Point(lon, lat) for (lon, lat) in obj.GetPoints()]
+			if len(points) > 1:
+				polygon = oqhazlib.geo.Polygon(points)
+			else:
+				[polygon] = points
+			polygons[site_name] = polygon
+
+	site_models = []
+	for site_name, polygon in polygons.items():
+		site_model = polygon_to_site_model(polygon, site_name, polygon_discretization)
+		site_models.append(site_model)
+
+	return site_models
 
 
 def plot_rupture_probabilities(source_model, prob_dict, pe_site_models, ne_site_models,
@@ -715,7 +792,7 @@ def plot_gridsearch_map(grd_source_model, mag_grid, rms_grid, pe_site_models,
 						ne_site_models, region=None, colormap="RdYlGn_r",
 						title=None, text_box=None, site_model_gis_file=None,
 						neutral_site_models=[], plot_rms_as_alpha=False,
-						plot_epicenter_as="area", fig_filespec=None):
+						rms_is_prob=False, plot_epicenter_as="area", fig_filespec=None):
 	"""
 	Generate map of rupture probabilities
 
@@ -875,12 +952,16 @@ def plot_gridsearch_map(grd_source_model, mag_grid, rms_grid, pe_site_models,
 
 	## or epicentral area
 	if plot_epicenter_as in ("area", "both"):
-		RMS_ZERO = False
-		if np.allclose(np.nanmax(rms_grid[rms_grid < 10]), 0):
-			rms_grid[rms_grid < 10] = 0
-			RMS_ZERO = True
 		grid_data = lbm.MeshGridData(lon_grid, lat_grid, rms_grid)
-		contour_levels = np.array([np.nanmin(rms_grid), np.nanmin(rms_grid) + 0.15])
+		if rms_is_prob:
+			contour_levels = np.array([np.nanmax(rms_grid) - 0.15, np.nanmax(rms_grid)])
+			RMS_ZERO = False
+		else:
+			contour_levels = np.array([np.nanmin(rms_grid) - 1E-5, np.nanmin(rms_grid) + 0.15])
+			RMS_ZERO = False
+			if np.allclose(np.nanmax(rms_grid[rms_grid < 10]), 0):
+				rms_grid[rms_grid < 10] = 0
+				RMS_ZERO = True
 
 		## Hatch fill
 		#[contour_line] = grid_data.extract_contour_lines([np.nanmin(rms_grid) + 0.15])
@@ -930,11 +1011,14 @@ def plot_gridsearch_map(grd_source_model, mag_grid, rms_grid, pe_site_models,
 		greys.fill(255)
 		colors = color_map_theme(mag_grid)
 		if rms_grid is not None:
-			rms_max, rms_min = np.nanmax(rms_grid), np.nanmin(rms_grid)
-			#rms_min = 0
-			rms_max = max(1, rms_max)
-			rms_range = rms_max - rms_min
-			alphas = 1 - (rms_grid - rms_min) / rms_range
+			if rms_is_prob:
+				alphas = rms_grid
+			else:
+				rms_max, rms_min = np.nanmax(rms_grid), np.nanmin(rms_grid)
+				#rms_min = 0
+				rms_max = max(1, rms_max)
+				rms_range = rms_max - rms_min
+				alphas = 1 - (rms_grid - rms_min) / rms_range
 			colors[..., -1] = alphas
 
 		map.map.imshow(greys)
