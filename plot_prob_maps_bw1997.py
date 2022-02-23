@@ -14,7 +14,7 @@ from castorlib import (plot_gridsearch_map,
 					   TRT, USD, LSD, RAR, RMS,
 					   project_folder, gis_folder,
 					   data_points, fault_model,
-					   base_fig_folder)
+					   base_fig_folder, watershed)
 
 
 fig_folder = os.path.join(base_fig_folder)
@@ -81,13 +81,12 @@ pe_thresholds = np.array(pe_thresholds)
 ne_thresholds = np.array(ne_thresholds)
 
 ## Additional constraint: intensities must be 7.5 or higher in part of Aysén catchment
-gis_file = os.path.join(gis_folder, 'Aysen_Watershed_fixed2.shp')
+gis_file = os.path.join(gis_folder, watershed)
 site_spacing = 10
 partial_pe_site_model = read_evidence_sites_from_gis(gis_file, site_spacing)[0]
 partial_pe_sites = partial_pe_site_model.get_sites()
 partial_pe_thresholds = [7.5] * len(partial_pe_sites)
 partial_pe_fraction = 0.35
-
 
 
 ## Compute magnitudes and RMS errors at grid points

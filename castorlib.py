@@ -19,11 +19,13 @@ if login_name == 'kris':
 	data_points = "Castor-points"
 	LOFZ_model = "LOFZ_breukenmodel4.TAB"
 	fault_model = "Chile-faults.TAB"
+	watershed = 'Aysen_Watershed_fixed2.shp'
 	base_fig_folder = os.path.join(project_folder, 'Figures')
 elif login_name == 'kwils':
 	project_folder = r"C:\Users\kwils.UGENT\OneDrive - UGent\Ground motions"
 	data_points = "Castor-points"
 	fault_model = "Chile-faults.TAB"
+	watershed = 'Aysen_Watershed.shp'
 	base_fig_folder = os.path.join(project_folder, "Projects", "Castor-Pollux", "Figures")
 gis_folder = os.path.join(project_folder, "Input data", "GIS")
 
