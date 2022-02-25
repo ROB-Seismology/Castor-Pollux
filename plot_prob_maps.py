@@ -13,7 +13,7 @@ event = "~4400 cal yrs BP"
 
 
 ## Selected magnitude for final figure in paper
-event_mags = {'~4400 cal yrs BP':[4.05, 4.64, 4.99, 5.23, 5.58, 5.82, 6.09, 6.31, 6.51, 6.72, 6.92]}
+event_mags = {'~4400 cal yrs BP':[4.69, 5.28, 5.63, 5.87, 6.21, 6.43, 6.63, 6.84, 7.04, 7.24, 7.45]}
 #event_mags = {'~4400 cal yrs BP':[6.55]}
 
 ## IPE names
@@ -90,7 +90,7 @@ for ipe_name in ipe_names:
 
 
 for M, source_model in zip(fault_mags, fault_networks):
-	print(M)
+	#print(M)
 	## Compute rupture probabilities
 	prob_dict = calc_rupture_probability_from_ground_motion_thresholds(
 						source_model, gmpe_system_def, imt, pe_site_models,
@@ -128,7 +128,8 @@ for M, source_model in zip(fault_mags, fault_networks):
 	#fig_filespec = None
 
 	## Colormaps: RdBu_r, YlOrRd, BuPu, RdYlBu_r, Greys
-	if np.isclose(M, magnitude, atol=0.01):
+	for magnitude in event_mags[event]:
+		if np.isclose(M, magnitude, atol=0.01):
 			plot_rupture_probabilities(source_model, prob_dict, pe_site_models, ne_site_models,
 										map_region, plot_point_ruptures=True, colormap="RdYlBu_r",
 										title=title, text_box=text_box,	fig_filespec=fig_filespec)

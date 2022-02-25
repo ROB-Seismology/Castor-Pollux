@@ -24,7 +24,7 @@ if login_name == 'kris':
 elif login_name == 'kwils':
 	project_folder = r"C:\Users\kwils.UGENT\OneDrive - UGent\Ground motions"
 	data_points = "Castor-points"
-	fault_model = "Chile-faults.TAB"
+	fault_model = "Chile-faults.tab"
 	watershed = 'Aysen_Watershed.shp'
 	base_fig_folder = os.path.join(project_folder, "Projects", "Castor-Pollux", "Figures")
 gis_folder = os.path.join(project_folder, "Input data", "GIS")
@@ -287,7 +287,7 @@ def read_fault_source_model_as_floating_ruptures(gis_filespec, min_mag, max_mag,
 	return rshalib.source.SourceModel(somo_name, sources)
 
 
-def read_fault_source_model_as_network(gis_filespec, section_len=0.8, dM=0.2,
+def read_fault_source_model_as_network(gis_filespec, section_len=1.7, dM=0.2,
 					num_sections=None, max_strike_delta=60, characteristic=True):
 	"""
 	Read fault source model as network, containing all possible connections
@@ -333,7 +333,7 @@ def read_fault_source_model_as_network(gis_filespec, section_len=0.8, dM=0.2,
 	flt_network = fault_somo.get_fault_network(max_gap=1, allow_triple_junctions=allow_triple_junctions, max_strike_delta=max_strike_delta)
 	flt_network.check_consistency()
 	print("Determining all possible connections...")
-	connections = flt_network.get_all_connections(100, allow_triple_junctions=allow_triple_junctions)
+	connections = flt_network.get_all_connections(200, allow_triple_junctions=allow_triple_junctions)
 	max_num_sections = max([len(conn) for conn in connections])
 	min_aspect_ratio = 0.67
 
@@ -767,7 +767,7 @@ def plot_rupture_probabilities(source_model, prob_dict, pe_site_models, ne_site_
 		layers.append(layer)
 
 
-	scalebar_style = lbm.ScalebarStyle((-72.25, -44.9), 25, font_size=12, yoffset=2000)
+	scalebar_style = lbm.ScalebarStyle((-71.75, -45.1), 25, font_size=12, yoffset=2000)
 	map = lbm.LayeredBasemap(layers, title, "merc", region=region,
 							graticule_interval=(1, 0.5), resolution='h',
 							scalebar_style=scalebar_style)
