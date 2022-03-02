@@ -471,7 +471,8 @@ def read_evidence_site_info_from_txt(filespec):
 	return pe_thresholds, pe_site_models, ne_thresholds, ne_site_models
 
 
-def read_evidence_sites_from_gis(gis_filespec, polygon_discretization=5):
+def read_evidence_sites_from_gis(gis_filespec, polygon_discretization=5,
+										polygon_name=''):
 	"""
 	Read sites with shaking evidence (without actual intensity information)
 	from GIS file
@@ -481,13 +482,20 @@ def read_evidence_sites_from_gis(gis_filespec, polygon_discretization=5):
 	:param polygon_discretization:
 		float, spacing (in km) to discretize polygonal sites
 		(default: 5)
+	:param polygon_name:
+		str, name of specific polygon to select
+		(default: '')
 
 	:return:
 		list with instances of :class:`rshalib.site.SoilSiteModel`
 	"""
 	polygons = {}
 
-	for rec in read_gis_file(gis_filespec):
+	attribute_filter = {}
+	if polygon_name:
+		attribute_filter = {'Name': [polygon_name]}
+
+	for rec in read_gis_file(gis_filespec, attribute_filter=attribute_filter):
 		geom_type = rec["obj"].GetGeometryName()
 		if geom_type == "POLYGON":
 			obj = rec["obj"]
