@@ -17,15 +17,17 @@ login_name = os.getlogin()
 if login_name == 'kris':
 	project_folder = r"C:\Users\kris\Documents\Projects\2022 - Castor-Pollux"
 	data_points = "Castor-points"
-	LOFZ_model = "LOFZ_breukenmodel4.TAB"
+	#LOFZ_model = "LOFZ_breukenmodel4.TAB"
 	fault_model = "Chile-faults.TAB"
-	watershed = 'Aysen_Watershed_fixed2.shp'
+	watershed_file = 'Aysen_Watershed_fixed2.shp'
+	subcatchments_file = 'Aysen-subcatchments.shp'
 	base_fig_folder = os.path.join(project_folder, 'Figures')
 elif login_name == 'kwils':
 	project_folder = r"C:\Users\kwils.UGENT\OneDrive - UGent\Ground motions"
 	data_points = "Castor-points"
 	fault_model = "Chile-faults.tab"
-	watershed = 'Aysen-subcatchments.shp'
+	watershed_file = 'Aysen_Watershed_fixed2.shp'
+	subcatchments_file = 'Aysen-subcatchments.shp'
 	base_fig_folder = os.path.join(project_folder, "Projects", "Castor-Pollux", "Figures")
 gis_folder = os.path.join(project_folder, "Input data", "GIS")
 
@@ -801,8 +803,9 @@ def plot_rupture_probabilities(source_model, prob_dict, pe_site_models, ne_site_
 def plot_gridsearch_map(grd_source_model, mag_grid, rms_grid, pe_site_models,
 						ne_site_models, region=None, colormap="RdYlGn_r",
 						title=None, text_box=None, site_model_gis_file=None,
-						neutral_site_models=[], plot_rms_as_alpha=False,
-						rms_is_prob=False, plot_epicenter_as="area", fig_filespec=None):
+						neutral_site_models=[],
+						plot_rms_as_alpha=False, rms_is_prob=False,
+						plot_epicenter_as="area", catchment='', fig_filespec=None):
 	"""
 	Generate map of rupture probabilities
 
@@ -842,6 +845,9 @@ def plot_gridsearch_map(grd_source_model, mag_grid, rms_grid, pe_site_models,
 	:param plot_epicenter_as:
 		str, how to plot the estimated epicenter: 'point', 'area' or 'both'
 		(default: 'area')
+	:param catchment:
+		str, name of (sub)catchment or 'full' for entire watershed to add to the map
+		(default: '')
 	:param fig_filespec:
 		str, full path to output file
 		(default: None, will plot on screen)
@@ -855,26 +861,27 @@ def plot_gridsearch_map(grd_source_model, mag_grid, rms_grid, pe_site_models,
 		region = grd_source_model.grid_outline
 
 	## Magnitude contours
-	grid_data = lbm.MeshGridData(lon_grid, lat_grid, mag_grid)
-	#colormap = "jet"
-	color_map_theme = lbm.ThematicStyleColormap(color_map=colormap, vmin=min_mag, vmax=max_mag)
-	color_map_theme.color_map.set_under('w')
-	colorbar_title = "Magnitude"
-	contour_levels = np.arange(min_mag, max_mag + 0.5, 0.5)
-	contour_line_style = lbm.LineStyle(label_style=lbm.TextStyle(font_size=10))
-	colorbar_style = lbm.ColorbarStyle(colorbar_title, format="%.1f")
-	if plot_rms_as_alpha:
-		grid_style = lbm.GridStyle(None, color_gradient=None, line_style=contour_line_style,
-									contour_levels=contour_levels, colorbar_style=None)
-	else:
-		grid_style = lbm.GridStyle(color_map_theme, color_gradient="continuous",
-					line_style=contour_line_style, contour_levels=contour_levels,
-					colorbar_style=colorbar_style)
-	layer = lbm.MapLayer(grid_data, grid_style)
-	layers.append(layer)
+	if not np.isnan(mag_grid).all():
+		grid_data = lbm.MeshGridData(lon_grid, lat_grid, mag_grid)
+		#colormap = "jet"
+		color_map_theme = lbm.ThematicStyleColormap(color_map=colormap, vmin=min_mag, vmax=max_mag)
+		color_map_theme.color_map.set_under('w')
+		colorbar_title = "Magnitude"
+		contour_levels = np.arange(min_mag, max_mag + 0.5, 0.5)
+		contour_line_style = lbm.LineStyle(label_style=lbm.TextStyle(font_size=10))
+		colorbar_style = lbm.ColorbarStyle(colorbar_title, format="%.1f")
+		if plot_rms_as_alpha:
+			grid_style = lbm.GridStyle(None, color_gradient=None, line_style=contour_line_style,
+										contour_levels=contour_levels, colorbar_style=None)
+		else:
+			grid_style = lbm.GridStyle(color_map_theme, color_gradient="continuous",
+						line_style=contour_line_style, contour_levels=contour_levels,
+						colorbar_style=colorbar_style)
+		layer = lbm.MapLayer(grid_data, grid_style)
+		layers.append(layer)
 
 	## RMS contours
-	if rms_grid is not None and not plot_rms_as_alpha:
+	if rms_grid is not None and not plot_rms_as_alpha and not np.isinf(rms_grid).all():
 		grid_data = lbm.MeshGridData(lon_grid, lat_grid, rms_grid)
 		contour_levels = np.arange(0, 1, 0.1)
 		label_style = lbm.TextStyle(color='w', font_size=10)
@@ -938,11 +945,20 @@ def plot_gridsearch_map(grd_source_model, mag_grid, rms_grid, pe_site_models,
 	layers.append(layer)
 
 	## Aysen catchment
-	gis_filespec = os.path.join(gis_folder, watershed)
-	data = lbm.GisData(gis_filespec)
-	style = lbm.PolygonStyle(line_color='skyblue', fill_color='lightblue', alpha=0.5)
-	layer = lbm.MapLayer(data, style)
-	layers.append(layer)
+	if catchment == 'full':
+		gis_filename = watershed_file
+		selection_dict = {}
+	elif catchment:
+		gis_filename = subcatchments_file
+		selection_dict = {'Name': catchment}
+	else:
+		gis_filename = None
+	if gis_filename:
+		gis_filespec = os.path.join(gis_folder, gis_filename)
+		data = lbm.GisData(gis_filespec, selection_dict=selection_dict)
+		style = lbm.PolygonStyle(line_color='skyblue', fill_color='lightblue', alpha=0.5)
+		layer = lbm.MapLayer(data, style)
+		layers.append(layer)
 
 	## Add faults
 	gis_filespec = os.path.join(gis_folder, fault_model)
