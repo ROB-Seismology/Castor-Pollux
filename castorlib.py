@@ -846,7 +846,8 @@ def plot_gridsearch_map(grd_source_model, mag_grid, rms_grid, pe_site_models,
 		str, how to plot the estimated epicenter: 'point', 'area' or 'both'
 		(default: 'area')
 	:param catchment:
-		str, name of (sub)catchment or 'full' for entire watershed to add to the map
+		str, name of (sub)catchment or 'full' or 'all' for entire watershed
+		to add to the map
 		(default: '')
 	:param fig_filespec:
 		str, full path to output file
@@ -945,7 +946,7 @@ def plot_gridsearch_map(grd_source_model, mag_grid, rms_grid, pe_site_models,
 	layers.append(layer)
 
 	## Aysen catchment
-	if catchment == 'full':
+	if catchment in ('full', 'all'):
 		gis_filename = watershed_file
 		selection_dict = {}
 	elif catchment:
