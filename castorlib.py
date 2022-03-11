@@ -25,7 +25,7 @@ elif login_name == 'kwils':
 	project_folder = r"C:\Users\kwils.UGENT\OneDrive - UGent\Ground motions"
 	data_points = "Castor-points"
 	fault_model = "Chile-faults.tab"
-	watershed = 'Aysen_Watershed.shp'
+	watershed = 'Aysen-subcatchments.shp'
 	base_fig_folder = os.path.join(project_folder, "Projects", "Castor-Pollux", "Figures")
 gis_folder = os.path.join(project_folder, "Input data", "GIS")
 
@@ -938,8 +938,7 @@ def plot_gridsearch_map(grd_source_model, mag_grid, rms_grid, pe_site_models,
 	layers.append(layer)
 
 	## Aysen catchment
-	catchment = "Aysen_watershed"
-	gis_filespec = os.path.join(gis_folder, "%s.shp" % catchment)
+	gis_filespec = os.path.join(gis_folder, watershed)
 	data = lbm.GisData(gis_filespec)
 	style = lbm.PolygonStyle(line_color='skyblue', fill_color='lightblue', alpha=0.5)
 	layer = lbm.MapLayer(data, style)
