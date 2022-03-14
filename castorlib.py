@@ -955,7 +955,7 @@ def plot_gridsearch_map(grd_source_model, mag_grid, rms_grid, pe_site_models,
 		layers.append(layer)
 	elif catchment:
 		# add entire catchment
-		gis_filename = watershed_file
+		gis_filename = subcatchments_file
 		gis_filespec = os.path.join(gis_folder, gis_filename)
 		data = lbm.GisData(gis_filespec)
 		style = lbm.PolygonStyle(line_color='skyblue', fill_color='lightblue', alpha=0.5)
@@ -966,7 +966,7 @@ def plot_gridsearch_map(grd_source_model, mag_grid, rms_grid, pe_site_models,
 		selection_dict = {'Name': catchment}
 		gis_filespec = os.path.join(gis_folder, gis_filename)
 		data = lbm.GisData(gis_filespec, selection_dict=selection_dict)
-		style = lbm.PolygonStyle(line_color='mediumorchid', fill_color='plum', alpha=0.5)
+		style = lbm.PolygonStyle(line_color='mediumorchid', fill_color=None, alpha=0.5)
 		layer = lbm.MapLayer(data, style)
 		layers.append(layer)
 

@@ -95,7 +95,7 @@ for subcatchment in subcatchments:
 	partial_pe_fraction = 0.1
     		
 	## Compute magnitudes and RMS errors at grid points
-	method = 'forward'
+	method = 'probabilistic'
 	(mag_grid, rms_grid) = (
 		estimate_epicenter_location_and_magnitude_from_intensities(
 		ipe_name, imt, grd_src_model, pe_sites, pe_thresholds,
@@ -115,10 +115,10 @@ for subcatchment in subcatchments:
 		text_box += "P: %.2f - %.2f"
 	else:
 		text_box += "RMSE: %.2f - %.2f"
-		try:
-			text_box %= (rms_grid.min(), rms_grid[rms_grid < 10].max())
-		except:
-			pass
+	try:
+		text_box %= (rms_grid.min(), rms_grid[rms_grid < 10].max())
+	except:
+		pass
 	
 	rms_is_prob = ('probabilistic' in method)
 	map = plot_gridsearch_map(grd_src_model, mag_grid, rms_grid,
