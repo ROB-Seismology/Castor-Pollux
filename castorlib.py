@@ -26,7 +26,7 @@ elif login_name == 'kwils':
 	project_folder = r"C:\Users\kwils.UGENT\OneDrive - UGent\Ground motions"
 	data_points = "Castor-points"
 	fault_model = "Chile-faults.tab"
-	watershed_file = 'Aysen_Watershed_fixed2.shp'
+	watershed_file = 'Aysen-catchment.shp'
 	subcatchments_file = 'Aysen-subcatchments.shp'
 	base_fig_folder = os.path.join(project_folder, "Projects", "Castor-Pollux", "Figures")
 gis_folder = os.path.join(project_folder, "Input data", "GIS")
@@ -948,16 +948,25 @@ def plot_gridsearch_map(grd_source_model, mag_grid, rms_grid, pe_site_models,
 	## Aysen catchment
 	if catchment in ('full', 'all'):
 		gis_filename = watershed_file
-		selection_dict = {}
+		gis_filespec = os.path.join(gis_folder, gis_filename)
+		data = lbm.GisData(gis_filespec)
+		style = lbm.PolygonStyle(line_color='skyblue', fill_color='lightblue', alpha=0.5)
+		layer = lbm.MapLayer(data, style)
+		layers.append(layer)
 	elif catchment:
+		# add entire catchment
+		gis_filename = watershed_file
+		gis_filespec = os.path.join(gis_folder, gis_filename)
+		data = lbm.GisData(gis_filespec)
+		style = lbm.PolygonStyle(line_color='skyblue', fill_color='lightblue', alpha=0.5)
+		layer = lbm.MapLayer(data, style)
+		layers.append(layer)
+		# highlight partial catchment
 		gis_filename = subcatchments_file
 		selection_dict = {'Name': catchment}
-	else:
-		gis_filename = None
-	if gis_filename:
 		gis_filespec = os.path.join(gis_folder, gis_filename)
 		data = lbm.GisData(gis_filespec, selection_dict=selection_dict)
-		style = lbm.PolygonStyle(line_color='skyblue', fill_color='lightblue', alpha=0.5)
+		style = lbm.PolygonStyle(line_color='mediumorchid', fill_color='plum', alpha=0.5)
 		layer = lbm.MapLayer(data, style)
 		layers.append(layer)
 
