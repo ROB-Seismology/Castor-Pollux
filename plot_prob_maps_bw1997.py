@@ -14,7 +14,7 @@ from castorlib import (plot_gridsearch_map,
 					   TRT, USD, LSD, RAR, RMS,
 					   project_folder, gis_folder,
 					   data_points, fault_model,
-					   base_fig_folder, watershed)
+					   base_fig_folder, watershed_file, subcatchments_file)
 
 
 fig_folder = os.path.join(base_fig_folder)
@@ -80,18 +80,20 @@ for nesm, ne_threshold in zip(ne_site_models, ne_thresholds):
 pe_thresholds = np.array(pe_thresholds)
 ne_thresholds = np.array(ne_thresholds)
 
-## Additional constraint: intensities must be 7.5 or higher in part of Aysén catchment
-gis_file = os.path.join(gis_folder, watershed)
-site_spacing = 10
+# Additional constraint: intensities must be 7.5 or higher in part of Aysén catchment
+gis_file = os.path.join(gis_folder, subcatchments_file)
+site_spacing = 1
+# partial_pe_fraction aanpassen in functie van catchment en/of site_spacing verlagen
 #subcatchments = ['Rio Simpson', 'Aysen Fjord', 'Esteros', 'Rio Blanco', 'Rio Condor', 'Rio Maninhuales', 'Los Palos']
-subcatchments = ['Los Palos']
+subcatchments = ['Rio Maninhuales']
 for subcatchment in subcatchments:
 	print(subcatchment)
 	partial_pe_site_model = read_evidence_sites_from_gis(gis_file, site_spacing, polygon_name=subcatchment)[0]
 	partial_pe_sites = partial_pe_site_model.get_sites()
+	#print('%s subcatchment: %d sites' % (subcatchment, len(partial_pe_sites)))
 	partial_pe_thresholds = [7.5] * len(partial_pe_sites)
 	partial_pe_fraction = 0.1
-		
+    		
 	## Compute magnitudes and RMS errors at grid points
 	method = 'forward'
 	(mag_grid, rms_grid) = (
@@ -105,7 +107,6 @@ for subcatchment in subcatchments:
 	
 	rms_grid[np.isinf(rms_grid)] = 10.0
 	
-	
 	## Plot map
 	# TODO: blend alpha in function of rms
 	# See: https://matplotlib.org/devdocs/gallery/images_contours_and_fields/image_transparency_blend.html
@@ -114,13 +115,16 @@ for subcatchment in subcatchments:
 		text_box += "P: %.2f - %.2f"
 	else:
 		text_box += "RMSE: %.2f - %.2f"
-	text_box %= (rms_grid.min(), rms_grid[rms_grid < 10].max())
+		try:
+			text_box %= (rms_grid.min(), rms_grid[rms_grid < 10].max())
+		except:
+			pass
 	
 	rms_is_prob = ('probabilistic' in method)
 	map = plot_gridsearch_map(grd_src_model, mag_grid, rms_grid,
 							pe_site_models, ne_site_models,
 							site_model_gis_file=None,
-							text_box=text_box,
+							text_box=text_box, catchment=subcatchment,
 							plot_rms_as_alpha=False, rms_is_prob=rms_is_prob,
 							plot_epicenter_as="area")
 	
