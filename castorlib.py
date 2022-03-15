@@ -978,60 +978,61 @@ def plot_gridsearch_map(grd_source_model, mag_grid, rms_grid, pe_site_models,
 	layers.append(layer)
 
 	## Add epicenter
-	if plot_epicenter_as in ("point", "both"):
-		idx = np.unravel_index(rms_grid.argmin(), rms_grid.shape)
-		point_data = lbm.PointData(lon_grid[idx], lat_grid[idx])
-		point_style = lbm.PointStyle(shape='*', fill_color='c', size=12)
-		layer = lbm.MapLayer(point_data, point_style)
-		layers.append(layer)
+	if rms_grid is not None and not np.isinf(rms_grid).all():
+		if plot_epicenter_as in ("point", "both"):
+				idx = np.unravel_index(rms_grid.argmin(), rms_grid.shape)
+				point_data = lbm.PointData(lon_grid[idx], lat_grid[idx])
+				point_style = lbm.PointStyle(shape='*', fill_color='c', size=12)
+				layer = lbm.MapLayer(point_data, point_style)
+				layers.append(layer)
 
-	## or epicentral area
-	if plot_epicenter_as in ("area", "both"):
-		grid_data = lbm.MeshGridData(lon_grid, lat_grid, rms_grid)
-		if rms_is_prob:
-			contour_levels = np.array([np.nanmax(rms_grid) - 0.15, np.nanmax(rms_grid)])
-			RMS_ZERO = False
-		else:
-			contour_levels = np.array([np.nanmin(rms_grid) - 1E-5, np.nanmin(rms_grid) + 0.15])
-			RMS_ZERO = False
-			if np.allclose(np.nanmax(rms_grid[rms_grid < 10]), 0):
-				rms_grid[rms_grid < 10] = 0
-				RMS_ZERO = True
+		## or epicentral area
+		if plot_epicenter_as in ("area", "both"):
+			grid_data = lbm.MeshGridData(lon_grid, lat_grid, rms_grid)
+			if rms_is_prob:
+				contour_levels = np.array([np.nanmax(rms_grid) - 0.15, np.nanmax(rms_grid)])
+				RMS_ZERO = False
+			else:
+				contour_levels = np.array([np.nanmin(rms_grid) - 1E-5, np.nanmin(rms_grid) + 0.15])
+				RMS_ZERO = False
+				if np.allclose(np.nanmax(rms_grid[rms_grid < 10]), 0):
+					rms_grid[rms_grid < 10] = 0
+					RMS_ZERO = True
 
-		## Hatch fill
-		#[contour_line] = grid_data.extract_contour_lines([np.nanmin(rms_grid) + 0.15])
-		#contour_line = lbm.MultiPolygonData(contour_line.lons, contour_line.lats,
-		#									values=contour_line.values)
-		[contour_mpg] = grid_data.extract_contour_intervals(contour_levels)
-		if RMS_ZERO:
-			## Hack: if all RMS are zero, outer polygon should correspond to map frame
-			lon0, lon1 = lon_grid.min(), lon_grid.max()
-			lat0, lat1 = lat_grid.min(), lat_grid.max()
-			contour_mpg.interior_lons = [contour_mpg.lons]
-			contour_mpg.interior_lats = [contour_mpg.lats]
-			contour_mpg.lons = [[lon0, lon0, lon1, lon1, lon0]]
-			contour_mpg.lats = [[lat0, lat1, lat1, lat0, lat0]]
-		polygon_style = lbm.PolygonStyle(line_pattern='-', line_color=None,
-										line_width=0, fill_hatch='\\', hatch_color='lawngreen',
-										fill_color="none")
-		"""
-		contour_line_style = lbm.LineStyle(line_pattern='-', line_color='c',
-										line_width=1, label_style=None, alpha=0)
-		grid_style = lbm.GridStyle(None, color_gradient=None, line_style=contour_line_style,
-									contour_levels=contour_levels, colorbar_style=None,
-									fill_hatches=['\\'])
-		layer = lbm.MapLayer(grid_data, grid_style)
-		"""
-		layer = lbm.MapLayer(contour_mpg, polygon_style)
-		layers.append(layer)
+			## Hatch fill
+			#[contour_line] = grid_data.extract_contour_lines([np.nanmin(rms_grid) + 0.15])
+			#contour_line = lbm.MultiPolygonData(contour_line.lons, contour_line.lats,
+			#									values=contour_line.values)
+			[contour_mpg] = grid_data.extract_contour_intervals(contour_levels)
+			if RMS_ZERO:
+				## Hack: if all RMS are zero, outer polygon should correspond to map frame
+				lon0, lon1 = lon_grid.min(), lon_grid.max()
+				lat0, lat1 = lat_grid.min(), lat_grid.max()
+				contour_mpg.interior_lons = [contour_mpg.lons]
+				contour_mpg.interior_lats = [contour_mpg.lats]
+				contour_mpg.lons = [[lon0, lon0, lon1, lon1, lon0]]
+				contour_mpg.lats = [[lat0, lat1, lat1, lat0, lat0]]
+			polygon_style = lbm.PolygonStyle(line_pattern='-', line_color=None,
+											line_width=0, fill_hatch='\\', hatch_color='lawngreen',
+											fill_color="none")
+			"""
+			contour_line_style = lbm.LineStyle(line_pattern='-', line_color='c',
+											line_width=1, label_style=None, alpha=0)
+			grid_style = lbm.GridStyle(None, color_gradient=None, line_style=contour_line_style,
+										contour_levels=contour_levels, colorbar_style=None,
+										fill_hatches=['\\'])
+			layer = lbm.MapLayer(grid_data, grid_style)
+			"""
+			layer = lbm.MapLayer(contour_mpg, polygon_style)
+			layers.append(layer)
 
-		## Contour line
-		contour_line_style = lbm.LineStyle(line_pattern='-', line_color='lawngreen',
-										line_width=2, label_style=None, alpha=1)
-		grid_style = lbm.GridStyle(None, color_gradient=None, line_style=contour_line_style,
-									contour_levels=contour_levels, colorbar_style=None)
-		layer = lbm.MapLayer(grid_data, grid_style)
-		layers.append(layer)
+			## Contour line
+			contour_line_style = lbm.LineStyle(line_pattern='-', line_color='lawngreen',
+											line_width=2, label_style=None, alpha=1)
+			grid_style = lbm.GridStyle(None, color_gradient=None, line_style=contour_line_style,
+										contour_levels=contour_levels, colorbar_style=None)
+			layer = lbm.MapLayer(grid_data, grid_style)
+			layers.append(layer)
 
 	legend_style = None
 	title = ""
@@ -1041,7 +1042,7 @@ def plot_gridsearch_map(grd_source_model, mag_grid, rms_grid, pe_site_models,
 			legend_style=legend_style)
 
 	## Alternative plotting of mag_grid, applying rms_grid as alpha values
-	if plot_rms_as_alpha:
+	if rms_grid is not None and plot_rms_as_alpha and not np.isinf(rms_grid).all():
 		greys = np.empty(mag_grid.shape + (3,), dtype=np.uint8)
 		greys.fill(255)
 		colors = color_map_theme(mag_grid)
