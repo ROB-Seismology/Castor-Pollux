@@ -857,6 +857,7 @@ def plot_gridsearch_map(grd_source_model, mag_grid, rms_grid, pe_site_models,
 
 	lon_grid, lat_grid = grd_source_model.lon_grid, grd_source_model.lat_grid
 	min_mag, max_mag = np.floor(np.nanmin(mag_grid)), np.ceil(np.nanmax(mag_grid))
+	#print(min_mag, max_mag)
 	max_mag = 7.5
 	if region is None:
 		region = grd_source_model.grid_outline
