@@ -5,6 +5,7 @@ import openquake.hazardlib as oqhazlib
 #import hazard.rshalib as rshalib
 from hazard.rshalib.source import SimpleUniformGridSourceModel
 from hazard.rshalib.source_estimation import estimate_epicenter_location_and_magnitude_from_intensities
+from plotting.generic_mpl import plot_xy
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(SCRIPT_DIR)
@@ -90,7 +91,7 @@ for subcatchment in ('Aysen Fjord', 'Esteros', 'Los Palos', 'Rio Blanco',
 	partial_pe_sites = partial_pe_site_model.get_sites()
 	print('%s subcatchment: %d sites' % (subcatchment, len(partial_pe_sites)))
 	partial_pe_thresholds = [7.5] * len(partial_pe_sites)
-	partial_pe_fraction = 0.1
+	partial_pe_fraction = 0.
 
 	## Compute magnitudes and RMS errors at grid points
 	method = 'probabilistic_mean'
@@ -100,8 +101,24 @@ for subcatchment in ('Aysen Fjord', 'Esteros', 'Los Palos', 'Rio Blanco',
 		partial_pe_sites=partial_pe_sites, partial_pe_intensities=partial_pe_thresholds,
 		partial_pe_fraction=partial_pe_fraction, mag_pdf_idx='max')
 	if method[:13] == 'probabilistic':
-		(mag_grid, rms_grid, mag_pdf) = result
-		mag_pdf.plot(fig_filespec=None)
+		(mag_grid, rms_grid, mag_pdf, pe_curves, ne_curves) = result
+		mag_pdf.plot(fig_filespec=None, ylabel='Probability')
+
+		datasets = []
+		num_pe, num_ne = len(pe_sites), len(ne_sites)
+		for p in range(num_pe):
+			datasets.append((mag_pdf.values, pe_curves[p]))
+		for n in range(num_ne):
+			datasets.append((mag_pdf.values, ne_curves[n]))
+		prod = np.prod(pe_curves, axis=0) * np.prod(ne_curves, axis=0)
+		datasets.append((mag_pdf.values, prod))
+		colors = ['m'] * num_pe + ['c'] * num_ne + ['k']
+		labels = (['Positive'] + ['_nolegend_'] * (num_pe - 1)
+					+ ['Negative'] + ['_nolegend_'] * (num_ne - 1)
+					+ ['Product'])
+		linestyles = ['-'] * (num_pe + num_ne) + ['--']
+		plot_xy(datasets, colors=colors, labels=labels, linestyles=linestyles,
+					xlabel='Magnitude', ylabel='Probability', fig_filespec=None)
 	else:
 		(mag_grid, rms_grid) = result
 	#idx = np.unravel_index(rms_grid.argmin(), rms_grid.shape)
@@ -136,4 +153,4 @@ for subcatchment in ('Aysen Fjord', 'Esteros', 'Los Palos', 'Rio Blanco',
 	fig_filespec %= (event, ipe_name, method, subcatchment, output_format)
 
 	dpi = 200 if fig_filespec else 90
-	map.plot(fig_filespec=fig_filespec, dpi=dpi)
+	#map.plot(fig_filespec=fig_filespec, dpi=dpi)
