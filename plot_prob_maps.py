@@ -164,10 +164,11 @@ for subcatchment in subcatchments:
 	## Generate animated GIF
 	
 	for ipe_name in ipe_names:
-		img_basename = "%s_%s_%s" % (event, ipe_label, subcatchment)
-		create_animated_gif(fig_folder, img_basename)
+		img_basename = "%s_%s_M=" % (event, ipe_label)
+		out_file = os.path.join(fig_folder, img_basename[:-3] + "_probabilistic.gif")
+		create_animated_gif(fig_folder, img_basename, out_file)
 	#exit()
-	
+		
 	
 	# ## Determine which sections have highest probability
 	# for event in events:
