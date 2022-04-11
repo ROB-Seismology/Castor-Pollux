@@ -2,7 +2,7 @@ import os
 import imageio
 
 
-def create_animated_gif(folder, img_basename, ext=".png", duration=1):
+def create_animated_gif(folder, img_basename, out_file, ext=".png", duration=1):
 	images = []
 	for file in os.listdir(folder):
 		if (file[:len(img_basename)] == img_basename and
@@ -11,7 +11,6 @@ def create_animated_gif(folder, img_basename, ext=".png", duration=1):
 			img = imageio.imread(img_filespec)
 			images.append(img)
 
-	out_file = os.path.join(folder, img_basename + ".gif")
 	imageio.mimsave(out_file, images, duration=duration, subrectangles=True)
 
 

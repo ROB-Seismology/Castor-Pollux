@@ -28,7 +28,7 @@ output_format = 'png'
 event = "~4400 cal yrs BP"
 
 ## IPE and IMT
-ipe_name = "BakunWentworth1997WithSigma"
+ipe_name = "BakunWentworth1997"
 #ipe_name = "AtkinsonWald2007"
 imt = oqhazlib.imt.MMI()
 
@@ -84,8 +84,8 @@ ne_thresholds = np.array(ne_thresholds)
 gis_file = os.path.join(gis_folder, subcatchments_file)
 site_spacing = 1
 # partial_pe_fraction aanpassen in functie van catchment en/of site_spacing verlagen
-subcatchments = ['Rio Simpson', 'Aysen Fjord', 'Esteros', 'Rio Blanco', 'Rio Condor', 'Rio Maninhuales', 'Los Palos']
-#subcatchments = ['Los Palos']
+#subcatchments = ['Rio Simpson', 'Aysen Fjord', 'Esteros', 'Rio Blanco', 'Rio Condor', 'Rio Maninhuales', 'Los Palos']
+subcatchments = ['Rio Simpson']
 for subcatchment in subcatchments:
 	print(subcatchment)
 	partial_pe_site_model = read_evidence_sites_from_gis(gis_file, site_spacing, polygon_name=subcatchment)[0]
@@ -96,15 +96,23 @@ for subcatchment in subcatchments:
     		
 	## Compute magnitudes and RMS errors at grid points
 	method = 'probabilistic_highest'
-	(mag_grid, rms_grid) = (estimate_epicenter_location_and_magnitude_from_intensities(
+	result = (estimate_epicenter_location_and_magnitude_from_intensities(
 		ipe_name, imt, grd_src_model, pe_sites, pe_thresholds,
 		ne_sites, ne_thresholds, method=method,
 		partial_pe_sites=partial_pe_sites, partial_pe_intensities=partial_pe_thresholds,
-		partial_pe_fraction=partial_pe_fraction))
-	idx = np.unravel_index(rms_grid.argmin(), rms_grid.shape)
+		partial_pe_fraction=partial_pe_fraction, mag_pdf_idx=(list(np.around(grd_src_model.lats, 1)).index(-45.5), list(np.around(grd_src_model.lons, 1)).index(-72))))
+	if method[:13] == 'probabilistic':
+		fig_filespec = os.path.join(fig_folder, "%s_%s_%s+watershed_%s_maxprob.%s")
+		fig_filespec %= (event, ipe_name, method, subcatchment, output_format)
+		(mag_grid, rms_grid, mag_pdf) = result
+		mag_pdf.plot(fig_filespec=fig_filespec)
+	else:
+		(mag_grid, rms_grid) = result
+	
+	#idx = np.unravel_index(rms_grid.argmin(), rms_grid.shape)
 	#print(mag_grid[idx], lon_grid[idx], lat_grid[idx])
 	
-	#rms_grid[np.isinf(rms_grid)] = 10.0
+	rms_grid[np.isinf(rms_grid)] = 10.0
 	
 	## Plot map
 	# TODO: blend alpha in function of rms
