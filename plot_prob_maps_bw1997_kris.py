@@ -128,7 +128,7 @@ for subcatchment in ('Aysen Fjord', 'Esteros', 'Los Palos', 'Rio Blanco',
 							site_model_gis_file=None,
 							text_box=text_box,
 							plot_rms_as_alpha=False, rms_is_prob=rms_is_prob,
-							plot_epicenter_as="area", catchment=subcatchment)
+							plot_epicenter_as="both", catchment=subcatchment)
 
 	#fig_filespec = os.path.join(fig_folder, "%s_bw1997_forward.%s" % (event, output_format))
 	#fig_filespec = None
