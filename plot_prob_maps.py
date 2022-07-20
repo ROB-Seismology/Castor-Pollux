@@ -95,7 +95,9 @@ for subcatchment in subcatchments:
 	ppe_site_model = read_evidence_sites_from_gis(gis_file, site_spacing, polygon_name=subcatchment)[0]
 	partial_pe_sites = ppe_site_model.get_sites()
 	ppe_thresholds = [7.5] * len(partial_pe_sites)
+	num_ppe = len(partial_pe_sites)
 	ppe_fractions = [1, 10, 100, 1000, 5000, 10000]
+	ppe_fractions = [frac for frac in ppe_fractions if frac < num_ppe] + [num_ppe]
 	#ppe_fractions = [1]
 	
 	## Construct ground-motion model

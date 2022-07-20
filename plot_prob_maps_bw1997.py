@@ -85,7 +85,7 @@ ne_thresholds = np.array(ne_thresholds)
 # Additional constraint: intensities must be 7.5 or higher in part of Aysén catchment
 gis_file = os.path.join(gis_folder, subcatchments_file)
 site_spacing = 1 # in km
-subcatchments = ['Aysen total', 'Rio Simpson', 'Aysen Fjord', 'Esteros', 'Rio Blanco', 'Rio Condor', 'Rio Maninhuales', 'Los Palos']
+subcatchments = ['Aysen Fjord', 'Rio Simpson', 'Esteros', 'Rio Blanco', 'Rio Condor', 'Rio Maninhuales', 'Los Palos', 'Aysen total']
 #subcatchments = ['Aysen Fjord']
 for subcatchment in subcatchments:
 	print(subcatchment)
@@ -100,47 +100,60 @@ for subcatchment in subcatchments:
 	partial_pe_thresholds = [7.5] * len(partial_pe_sites)
 	
 	# Interpreted as fraction if < 1, as number of discretized sites if >= 1 and integer 	
+	num_ppe = len(partial_pe_sites)
 	partial_pe_fractions = [1, 10, 100, 1000, 5000, 10000]
-    		
+	#partial_pe_fractions = [10000]    	
+	#partial_pe_fractions = [frac for frac in partial_pe_fractions if frac < num_ppe] + [num_ppe]
+	
 	## Compute magnitudes and RMS errors at grid points
 	for partial_pe_fraction in partial_pe_fractions:
 		print(partial_pe_fraction)
 		method = 'probabilistic_highest'
-		#TODO: extract mag pdf from location with max probability and
-		#'mag_pdf_loc' parameter kan nu op 'max_by_mag' gezet worden om locatie-onafhankelijke magnitude PDF te verkrijgen (maar pe_curves en ne_curves zijn dan None).
 		#mag_pdf_loc=(-72,-45.5)
-		mag_pdf_loc = 'max'
-		result = (estimate_epicenter_location_and_magnitude_from_intensities(
-			ipe_name, imt, grd_src_model, pe_sites, pe_thresholds,
-			ne_sites, ne_thresholds, method=method,
-			partial_pe_sites=partial_pe_sites, partial_pe_intensities=partial_pe_thresholds,
-			partial_pe_fraction=partial_pe_fraction, mag_pdf_loc=mag_pdf_loc, truncation_level=truncation_level))
-			#partial_pe_fraction=partial_pe_fraction, mag_pdf_loc='max'))
-		if method[:13] == 'probabilistic':
-			(mag_grid, rms_grid, mag_pdf, pe_curves, ne_curves) = result
-	# 		fig_filespec = os.path.join(fig_folder, "%s_%s_%s+watershed_%s_prob-%s.%s")
-	# 		fig_filespec %= (event, ipe_name, method, subcatchment, mag_pdf_loc, output_format)
-	# 		mag_pdf.plot(fig_filespec=fig_filespec, ylabel='Probability')
-	
-			datasets = []
+		mag_pdf_locs = ['max', 'max_by_mag']
+		for mag_pdf_loc in mag_pdf_locs:
 			num_pe, num_ne = len(pe_sites), len(ne_sites)
-			for p in range(num_pe):
-				datasets.append((mag_pdf.values, pe_curves[p]))
-			for n in range(num_ne):
-				datasets.append((mag_pdf.values, ne_curves[n]))
-			prod = np.prod(pe_curves, axis=0) * np.prod(ne_curves, axis=0)
-			datasets.append((mag_pdf.values, prod))
-			colors = ['m'] * num_pe + ['c'] * num_ne + ['k']
-			labels = (['Positive'] + ['_nolegend_'] * (num_pe - 1)
-						+ ['Negative'] + ['_nolegend_'] * (num_ne - 1)
-						+ ['Product'])
-			linestyles = ['-'] * (num_pe + num_ne) + ['--']
-			fig_filespec = os.path.join(fig_folder, "%s_%s_%s+watershed_%s-%s_probabilities-%s.%s")
-			fig_filespec %= (event, ipe_name, method, subcatchment, partial_pe_fraction, mag_pdf_loc, output_format)
-			plot_xy(datasets, colors=colors, labels=labels, linestyles=linestyles,
-						xlabel='Magnitude', ylabel='Probability', fig_filespec=fig_filespec)
-		else:
-			(mag_grid, rms_grid) = result
+			norm_probs_num_sites = num_pe + num_ne
+			
+			result = (estimate_epicenter_location_and_magnitude_from_intensities(
+				ipe_name, imt, grd_src_model, pe_sites, pe_thresholds,
+				ne_sites, ne_thresholds, method=method,
+				partial_pe_sites=partial_pe_sites, partial_pe_intensities=partial_pe_thresholds,
+				partial_pe_fraction=partial_pe_fraction, mag_pdf_loc=mag_pdf_loc, 
+				norm_probs_num_sites=norm_probs_num_sites, truncation_level=truncation_level))
+			
+			if method[:13] == 'probabilistic':
+				(mag_grid, rms_grid, mag_pdf, pe_curves, ne_curves) = result
+				fig_filespec = os.path.join(fig_folder, "%s_%s_%s+watershed_%s-%s_probabilities-%s.%s")
+				fig_filespec %= (event, ipe_name, method, subcatchment, partial_pe_fraction, mag_pdf_loc, output_format)
+				
+				datasets = []
+				if num_pe + num_ne > 0:
+					if mag_pdf == None:
+						continue
+					else:
+						if pe_curves is None:
+							mag_pdf.plot(fig_filespec=fig_filespec, ylabel='Probability')
+						else:
+							for p in range(num_pe):
+								datasets.append((mag_pdf.values, pe_curves[p]))
+							for n in range(num_ne):
+								datasets.append((mag_pdf.values, ne_curves[n]))
+							prod = np.prod(pe_curves, axis=0) * np.prod(ne_curves, axis=0)
+							datasets.append((mag_pdf.values, prod))
+							if norm_probs_num_sites:
+								datasets.append((mag_pdf.values, mag_pdf.probs))
+							colors = ['m'] * num_pe + ['c'] * num_ne + ['k'] * 2
+							labels = (['Positive'] + ['_nolegend_'] * (num_pe - 1)
+								+ ['Negative'] + ['_nolegend_'] * (num_ne - 1)
+								+ ['Product'])
+							if norm_probs_num_sites:
+								labels.append('Product (normalized)')
+							linestyles = ['-'] * (num_pe + num_ne) + ['-','--']
+							plot_xy(datasets, colors=colors, labels=labels, linestyles=linestyles,
+										xlabel='Magnitude', ylabel='Probability', fig_filespec=fig_filespec)
+			else:
+				(mag_grid, rms_grid) = result
 		
 		#idx = np.unravel_index(rms_grid.argmin(), rms_grid.shape)
 		#print(mag_grid[idx], lon_grid[idx], lat_grid[idx])
@@ -156,6 +169,7 @@ for subcatchment in subcatchments:
 		try:
 			text_box %= (rms_grid.min(), rms_grid[rms_grid < 10].max())
 		except:
+			text_box %= (0,0)
 			pass
 		
 		rms_is_prob = ('probabilistic' in method)
