@@ -81,31 +81,22 @@ for ne_site_model, ne_threshold in zip(ne_site_models, ne_thresholds):
 ## Additional constraint: intensities must be 7.5 or higher in Aysén catchment (or as point in catchment)
 gis_file = os.path.join(gis_folder, subcatchments_file)
 site_spacing = 1
-# partial_pe_fraction aanpassen in functie van catchment en/of site_spacing verlagen
-#subcatchments = ['Rio Simpson', 'Aysen Fjord', 'Esteros', 'Rio Blanco', 'Rio Condor', 'Rio Maninhuales', 'Los Palos']
-subcatchments = ['Rio Maninhuales']
+subcatchments = ['Aysen total', 'Rio Simpson', 'Aysen Fjord', 'Esteros', 'Rio Blanco', 'Rio Condor', 'Rio Maninhuales', 'Los Palos']
+#subcatchments = ['Rio Maninhuales']
 for subcatchment in subcatchments:
 	print(subcatchment)
-	partial_pe_site_model = read_evidence_sites_from_gis(gis_file, site_spacing, polygon_name=subcatchment)[0]
-	partial_pe_sites = partial_pe_site_model.get_sites()
-	#print('%s subcatchment: %d sites' % (subcatchment, len(partial_pe_sites)))
-	partial_pe_thresholds = [7.5] * len(partial_pe_sites)
-	partial_pe_fraction = 0.1
-
-	## TODO: incorporate partial evidence into construction of GMM
+	fig_folder = os.path.join(base_fig_folder, subcatchment)
+	if not os.path.exists(fig_folder):
+		print('Figures folder does not exist')
+		os.mkdir(fig_folder)
 	
-# 	num_pe = len(pe_intensities)
-# 	pe_site_model = SoilSiteModel(pe_sites, "Positive evicence")
-# 	ind_pe_site_models = [SoilSiteModel([site], "") for site in pe_sites]
-# 	num_ne = len(ne_intensities)
-# 	if num_ne:
-# 		ne_site_model = SoilSiteModel(ne_sites, "Negative evidence")
-# 	num_ppe = len(partial_pe_intensities)
-# 	if num_ppe:
-# 		num_required_ppe = np.round(num_ppe * partial_pe_fraction)
-# 		print('Applying partial positive evidence for %d/%d sites'
-# 				% (num_required_ppe, num_ppe))
-# 		ppe_site_model = SoilSiteModel(partial_pe_sites, "Partial positive evidence")
+	## Incorporate partial evidence
+	#ppe_site_model = rshalib.site.SoilSiteModel(ppe_sites, "Partial positive evidence")
+	ppe_site_model = read_evidence_sites_from_gis(gis_file, site_spacing, polygon_name=subcatchment)[0]
+	partial_pe_sites = ppe_site_model.get_sites()
+	ppe_thresholds = [7.5] * len(partial_pe_sites)
+	ppe_fractions = [1, 10, 100, 1000, 5000, 10000]
+	#ppe_fractions = [1]
 	
 	## Construct ground-motion model
 	for ipe_name in ipe_names:
@@ -118,57 +109,61 @@ for subcatchment in subcatchments:
 	
 	for M, source_model in zip(fault_mags, fault_networks):
 		#print(M)
+			
 		## Compute rupture probabilities
-		prob_dict = calc_rupture_probability_from_ground_motion_thresholds(
-							source_model, gmpe_system_def, imt, pe_site_models,
-							pe_thresholds, ne_site_models, ne_thresholds, truncation_level,
-							integration_distance_dict=integration_distance_dict,
-							strict_intersection=strict_intersection)
-		probs = np.array(list(prob_dict.values()))
-		probs = probs[:, 0]
-		max_prob = probs.max()
-		max_prob_dict[event][ipe_name].append(max_prob)
-		print(M, max_prob)
-		for rup_name, prob in zip(prob_dict.keys(), probs):
-			for section in rup_name.split('+'):
-				if not section in section_prob_dict[event][ipe_name]:
-					section_prob_dict[event][ipe_name][section] = [prob]
-				else:
-					section_prob_dict[event][ipe_name][section].append(prob)
-	
-		## Plot
-		if "WithSigma" in ipe_name:
-			ipe_label = ipe_name[:ipe_name.find("WithSigma")]
-		else:
-			ipe_label = ipe_name
-	
-		#text_box = "Event: %s\nIPE: %s\nM: %.2f, Pmax: %.2f"
-		text_box = "Event: %s\nM: %.2f\nPmax: %.2f"
-		text_box %= (event, M, max_prob)
-	
-		#title = "Event: %s, IPE: %s, M=%.2f" % (event, ipe_name, M)
-		title = ""
-	
-		fig_filename = "%s_%s_M=%.2f.%s" % (event, ipe_label, M, output_format)
-		fig_filespec = os.path.join(fig_folder, fig_filename)
+		for ppe_fraction in ppe_fractions:
+			prob_dict = calc_rupture_probability_from_ground_motion_thresholds(
+								source_model, gmpe_system_def, imt, pe_site_models,
+								pe_thresholds, ne_site_models=ne_site_models, ne_thresholds=ne_thresholds, 
+								ppe_site_model=ppe_site_model, ppe_thresholds=ppe_thresholds, ppe_fraction=ppe_fraction,
+								truncation_level=truncation_level,
+								integration_distance_dict=integration_distance_dict,
+								strict_intersection=strict_intersection)
+			probs = np.array(list(prob_dict.values()))
+			probs = probs[:, 0]
+			max_prob = probs.max()
+			max_prob_dict[event][ipe_name].append(max_prob)
+			print(M, max_prob)
+			for rup_name, prob in zip(prob_dict.keys(), probs):
+				for section in rup_name.split('+'):
+					if not section in section_prob_dict[event][ipe_name]:
+						section_prob_dict[event][ipe_name][section] = [prob]
+					else:
+						section_prob_dict[event][ipe_name][section].append(prob)
 		
-		#fig_filespec = None
-	
-		## Colormaps: RdBu_r, YlOrRd, BuPu, RdYlBu_r, Greys
-		for magnitude in event_mags[event]:
-			if np.isclose(M, magnitude, atol=0.01):
-				plot_rupture_probabilities(source_model, prob_dict, pe_site_models, ne_site_models,
-											map_region, plot_point_ruptures=True, colormap="RdYlBu_r",
-											title=title, text_box=text_box,	fig_filespec=fig_filespec)
-	
-	## Generate animated GIF
-	
-	for ipe_name in ipe_names:
-		img_basename = "%s_%s_M=" % (event, ipe_label)
-		out_file = os.path.join(fig_folder, img_basename[:-3] + "_probabilistic.gif")
-		create_animated_gif(fig_folder, img_basename, out_file)
-	#exit()
+			## Plot
+			if "WithSigma" in ipe_name:
+				ipe_label = ipe_name[:ipe_name.find("WithSigma")]
+			else:
+				ipe_label = ipe_name
 		
+			#text_box = "Event: %s\nIPE: %s\nM: %.2f, Pmax: %.2f"
+			text_box = "Event: %s\nM: %.2f\nPmax: %.2f"
+			text_box %= (event, M, max_prob)
+		
+			#title = "Event: %s, IPE: %s, M=%.2f" % (event, ipe_name, M)
+			title = ""
+		
+			fig_filename = "%s_%s_%s_M=%.2f.%s" % (event, ipe_label, ppe_fraction, M, output_format)
+			fig_filespec = os.path.join(fig_folder, fig_filename)
+			
+			#fig_filespec = None
+		
+			## Colormaps: RdBu_r, YlOrRd, BuPu, RdYlBu_r, Greys
+			for magnitude in event_mags[event]:
+				if np.isclose(M, magnitude, atol=0.01):
+					plot_rupture_probabilities(source_model, prob_dict, pe_site_models, ne_site_models,
+												map_region, plot_point_ruptures=True, colormap="RdYlBu_r",
+												title=title, text_box=text_box,	fig_filespec=fig_filespec)
+	
+		## Generate animated GIF
+		
+		for ipe_name in ipe_names:
+			img_basename = "%s_%s_%s_M=" % (event, ipe_label, ppe_fraction)
+			out_file = os.path.join(fig_folder, img_basename[:-3] + "_probabilistic.gif")
+			create_animated_gif(fig_folder, img_basename, out_file)
+		#exit()
+			
 	
 	# ## Determine which sections have highest probability
 	# for event in events:
