@@ -982,16 +982,17 @@ def plot_gridsearch_map(grd_source_model, mag_grid, rms_grid, pe_site_models,
 	if rms_grid is not None and not np.isinf(rms_grid).all():
 		if plot_epicenter_as in ("point", "both"):
 			## Point with highest probability / lowest RMS
-			if rms_is_prob:
-				idx = np.nanargmax(rms_grid)
-			else:
-				idx = np.nanargmin(rms_grid)
-			row_idx, col_idx = np.unravel_index(idx, rms_grid.shape)
-			lon, lat = lon_grid[row_idx, col_idx], lat_grid[row_idx, col_idx]
-			point_data = lbm.PointData(lon, lat)
-			point_style = lbm.PointStyle(shape='*', fill_color='c', size=12)
-			layer = lbm.MapLayer(point_data, point_style)
-			layers.append(layer)
+			if not rms_grid.all(None):
+				if rms_is_prob:
+					idx = np.nanargmax(rms_grid)
+				else:
+					idx = np.nanargmin(rms_grid)
+				row_idx, col_idx = np.unravel_index(idx, rms_grid.shape)
+				lon, lat = lon_grid[row_idx, col_idx], lat_grid[row_idx, col_idx]
+				point_data = lbm.PointData(lon, lat)
+				point_style = lbm.PointStyle(shape='*', fill_color='c', size=12)
+				layer = lbm.MapLayer(point_data, point_style)
+				layers.append(layer)
 
 		## or epicentral area
 		if plot_epicenter_as in ("area", "both"):
