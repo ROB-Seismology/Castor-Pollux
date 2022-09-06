@@ -982,7 +982,7 @@ def plot_gridsearch_map(grd_source_model, mag_grid, rms_grid, pe_site_models,
 	if rms_grid is not None and not np.isinf(rms_grid).all():
 		if plot_epicenter_as in ("point", "both"):
 			## Point with highest probability / lowest RMS
-			if not rms_grid.all(None):
+			if not np.isnan(rms_grid).all():
 				if rms_is_prob:
 					idx = np.nanargmax(rms_grid)
 				else:
