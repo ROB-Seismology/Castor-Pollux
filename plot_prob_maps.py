@@ -81,8 +81,8 @@ for ne_site_model, ne_threshold in zip(ne_site_models, ne_thresholds):
 ## Additional constraint: intensities must be 7.5 or higher in Aysén catchment (or as point in catchment)
 gis_file = os.path.join(gis_folder, subcatchments_file)
 site_spacing = 1
-subcatchments = ['Aysen total', 'Rio Simpson', 'Aysen Fjord', 'Esteros', 'Rio Blanco', 'Rio Condor', 'Rio Maninhuales', 'Los Palos']
-#subcatchments = ['Rio Maninhuales']
+#"subcatchments = ['Los Palos', 'Rio Simpson', 'Aysen Fjord', 'Esteros', 'Rio Blanco', 'Rio Condor', 'Rio Maninhuales', 'Aysen total']
+subcatchments = ['Rio Maninhuales']
 for subcatchment in subcatchments:
 	print(subcatchment)
 	fig_folder = os.path.join(base_fig_folder, subcatchment)
@@ -96,8 +96,9 @@ for subcatchment in subcatchments:
 	partial_pe_sites = ppe_site_model.get_sites()
 	ppe_thresholds = [7.5] * len(partial_pe_sites)
 	num_ppe = len(partial_pe_sites)
-	ppe_fractions = [1, 10, 100, 1000, 5000, 10000]
-	ppe_fractions = [frac for frac in ppe_fractions if frac < num_ppe] + [num_ppe]
+	ppe_fractions = [100, 250, 500, 750, 1000, 2000, 3000, 5000]
+	#ppe_fractions = [1, 10, 100, 1000, 5000, 10000]
+	#ppe_fractions = [frac for frac in ppe_fractions if frac < num_ppe] + [num_ppe]
 	#ppe_fractions = [1]
 	
 	## Construct ground-motion model
@@ -110,6 +111,8 @@ for subcatchment in subcatchments:
 	
 	
 	for M, source_model in zip(fault_mags, fault_networks):
+		num_pe, num_ne = len(pe_thresholds), len(ne_thresholds)
+		norm_probs_num_sites = num_pe + num_ne
 		#print(M)
 			
 		## Compute rupture probabilities
@@ -118,7 +121,7 @@ for subcatchment in subcatchments:
 								source_model, gmpe_system_def, imt, pe_site_models,
 								pe_thresholds, ne_site_models=ne_site_models, ne_thresholds=ne_thresholds, 
 								ppe_site_model=ppe_site_model, ppe_thresholds=ppe_thresholds, ppe_fraction=ppe_fraction,
-								truncation_level=truncation_level,
+								truncation_level=truncation_level, norm_probs_num_sites=norm_probs_num_sites,
 								integration_distance_dict=integration_distance_dict,
 								strict_intersection=strict_intersection)
 			probs = np.array(list(prob_dict.values()))
@@ -152,18 +155,23 @@ for subcatchment in subcatchments:
 			#fig_filespec = None
 		
 			## Colormaps: RdBu_r, YlOrRd, BuPu, RdYlBu_r, Greys
+			grid_outline = (-73.8, -71.2, -46.1, -44.9)
+			grid_spacing = 0.1
+			grid_site_model = rshalib.site.GenericSiteModel.from_grid_spec(grid_outline, grid_spacing)
 			for magnitude in event_mags[event]:
 				if np.isclose(M, magnitude, atol=0.01):
 					plot_rupture_probabilities(source_model, prob_dict, pe_site_models, ne_site_models,
 												map_region, plot_point_ruptures=True, colormap="RdYlBu_r",
-												title=title, text_box=text_box,	fig_filespec=fig_filespec)
+												title=title, text_box=text_box,	fig_filespec=None, 
+												fig_filespec_max=None, ipe=ipe_label,
+												truncation_level=truncation_level, integration_distance=1000, grid_site_model=grid_site_model)
 	
 		## Generate animated GIF
 		
-		for ipe_name in ipe_names:
-			img_basename = "%s_%s_%s_M=" % (event, ipe_label, ppe_fraction)
-			out_file = os.path.join(fig_folder, img_basename[:-3] + "_probabilistic.gif")
-			create_animated_gif(fig_folder, img_basename, out_file)
+			for ipe_name in ipe_names:
+				img_basename = "%s_%s_%s_M=" % (event, ipe_label, ppe_fraction)
+				out_file = os.path.join(fig_folder, img_basename[:-3] + "_probabilistic.gif")
+				create_animated_gif(fig_folder, img_basename, out_file)
 		#exit()
 			
 	

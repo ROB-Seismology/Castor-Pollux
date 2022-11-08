@@ -10,6 +10,7 @@ import openquake.hazardlib as oqhazlib
 import hazard.rshalib as rshalib
 from hazard.rshalib.source_estimation import calc_rupture_probability_from_ground_motion_thresholds
 from hazard.rshalib.source.read_from_gis import import_source_model_from_gis
+from mapping.layeredbasemap.cm.norm import PiecewiseLinearNorm, LinearNorm
 
 
 ## Folder locations
@@ -531,7 +532,9 @@ def plot_rupture_probabilities(source_model, prob_dict, pe_site_models, ne_site_
 								title=None, text_box=None, site_model_gis_file=None,
 								prob_min=0., prob_max=1., highlight_max_prob_section=True,
 								max_prob_mag_precision=1, legend_label="Normalized probability",
-								neutral_site_models=[], fig_filespec=None):
+								neutral_site_models=[], fig_filespec=None,
+								plot_intensities_max_prob=True, fig_filespec_max=None, ipe="BakunWentworth1997WithSigma",
+								truncation_level=0, integration_distance=200, grid_site_model=None):
 	"""
 	Generate map of rupture probabilities
 
@@ -586,6 +589,23 @@ def plot_rupture_probabilities(source_model, prob_dict, pe_site_models, ne_site_
 	:param fig_filespec:
 		str, full path to output file
 		(default: None, will plot on screen)
+	:param plot_intensities_max_prob:
+		bool, wheter or not to plot intensity hazard map for rupture with maximum probability
+		(default: True)
+	:param fig_filespec_max:
+		str, full path to output file for hazard map
+		(default: None, will plot on screen)
+	:param ipe:
+		str, which IPE to use for hazard map
+		(default: BakunWentworth1997WithSigma)
+	:param truncation_level:
+		float, number of standard deviations to consider on GMPE uncertainty 
+		(default: 0 = mean ground motion)
+	:param integration_distance:
+		float, maximum distance with respect to source to compute ground motion 
+		(default: 200)
+	:param grid_site_model:
+		instance of rshalib.site.GenericSiteModel or rshalib.site.SoilSiteModel, sites where ground motions will be computed
 	"""
 	## Extract source locations
 	x, y = [], []
@@ -666,7 +686,8 @@ def plot_rupture_probabilities(source_model, prob_dict, pe_site_models, ne_site_
 				else:
 					max_source_data.append(line_data)
 
-
+	print(mag_max_prob_id_dict)
+	
 	## Plot histogram of probabilities
 	"""
 	bin_width = 0.02
@@ -799,6 +820,46 @@ def plot_rupture_probabilities(source_model, prob_dict, pe_site_models, ne_site_
 	else:
 		dpi = 90
 	map.plot(fig_filespec=fig_filespec, dpi=dpi)
+	
+	if plot_intensities_max_prob is True:
+		print("Plotting hazard map...")
+		for mag, (idx, prob) in mag_max_prob_id_dict.items():
+			fault_id = list(prob_dict.keys())[idx]
+			rupture = source_model.get_source_by_id(fault_id)
+			max_flt_src_model = rshalib.source.SourceModel("", [rupture])
+			ipe_system_def = {}
+			ipe_pmf = rshalib.pmf.GMPEPMF([ipe], [1])
+			ipe_system_def[TRT] = ipe_pmf
+			imt_periods = {'MMI': [0]}
+			
+			gmm = rshalib.shamodel.DSHAModel("", max_flt_src_model, ipe_system_def, grid_site_model, imt_periods=imt_periods, truncation_level=truncation_level, integration_distance=integration_distance)
+			uhs_field = gmm.calc_gmf_fixed_epsilon()
+			num_sites = uhs_field.num_sites
+			
+			contour_interval = 0.5
+			breakpoints = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+			norm = PiecewiseLinearNorm(breakpoints)
+			title = "%s, Mw=%s" % (ipe, mag)
+			hm = uhs_field.get_hazard_map()
+			colorbar_style = lbm.ColorbarStyle(format="%.1f", title="Intensity", ticks=breakpoints)
+			site_style = lbm.PointStyle(shape=".", line_color="k", size=0.5)
+			map = hm.get_plot(graticule_interval=(5, 2), cmap="usgs", norm=norm,
+						   contour_interval=contour_interval, num_grid_cells=num_sites,
+						   title=title, projection="merc", site_style=site_style,
+						   source_model=max_flt_src_model, resolution="h",
+						   colorbar_style=colorbar_style, show_legend=False)
+			map.graticule_style.annot_format = "%.1f"
+	
+			# Add complete fault
+			gis_filespec = os.path.join(gis_folder, fault_model)
+			data = lbm.GisData(gis_filespec)
+			style = lbm.LineStyle(line_color='grey', line_width=1.25)
+			layer = lbm.MapLayer(data, style, legend_label="Faults")
+			map.layers.append(layer)
+	
+			# TODO: add lake evidence
+	
+			map.plot(fig_filespec=fig_filespec_max, dpi=100)
 
 def plot_gridsearch_map(grd_source_model, mag_grid, rms_grid, pe_site_models,
 						ne_site_models, region=None, colormap="RdYlGn_r",
