@@ -606,6 +606,9 @@ def plot_rupture_probabilities(source_model, prob_dict, pe_site_models, ne_site_
 		(default: 200)
 	:param grid_site_model:
 		instance of rshalib.site.GenericSiteModel or rshalib.site.SoilSiteModel, sites where ground motions will be computed
+
+	:return:
+		mag_max_prob_id_dict, mapping magnitudes to (fault_id, probability) tuples
 	"""
 	## Extract source locations
 	x, y = [], []
@@ -658,8 +661,13 @@ def plot_rupture_probabilities(source_model, prob_dict, pe_site_models, ne_site_
 			x.append(lons)
 			y.append(lats)
 
-	## Determine order from lowest to highest probability
+	## Reorder from lowest to highest probability
+	## to make sure highest-probability segments are plotted on top
 	idxs = np.argsort(values['prob'])
+	values['prob'] = [values['prob'][idx] for idx in idxs]
+	values['mag'] = [values['mag'][idx] for idx in idxs]
+	x = [x[idx] for idx in idxs]
+	y = [y[idx] for idx in idxs]
 
 	if source_model.get_point_sources() and not plot_point_ruptures:
 		source_data = lbm.MultiPointData(x, y, values=values)
@@ -670,31 +678,33 @@ def plot_rupture_probabilities(source_model, prob_dict, pe_site_models, ne_site_
 			"""
 			## Simpler, if source model contains faults with same magnitude
 			idx = idxs[-1]
-			mag = np.round(values['mag'][idx], max_prob_mag_precision)
-			prob = values['prob'][idx]
+			mag = np.round(values['mag'][-1], max_prob_mag_precision)
+			prob = values['prob'][-1]
+			max_source_data = None
 			if prob:
 				fault_id = list(prob_dict.keys())[idx]
 				mag_max_prob_id_dict[mag] = (fault_id, prob)
 				#print("Max. prob.: %s (M=%.2f) %.2f" % (fault_id, mag, prob))
-				line_data = source_data[idx]
+				line_data = source_data[-1]
 				max_source_data = line_data
 			"""
-			for idx in idxs:
-				mag = np.round(values['mag'][idx], max_prob_mag_precision)
-				prob = values['prob'][idx]
+			## Note: i = index in ordered array, idx = original index !
+			for i in range(len(idxs)):
+				mag = np.round(values['mag'][i], max_prob_mag_precision)
+				prob = values['prob'][i]
 				if prob and (not mag in mag_max_prob_id_dict or prob > mag_max_prob_id_dict[mag][1]):
-					mag_max_prob_id_dict[mag] = (idx, prob)
+					mag_max_prob_id_dict[mag] = (i, prob)
 			max_source_data = None
-			for mag, (idx, prob) in list(mag_max_prob_id_dict.items()):
+			for mag, (i, prob) in list(mag_max_prob_id_dict.items()):
+				idx = idxs[i]
 				fault_id = list(prob_dict.keys())[idx]
 				mag_max_prob_id_dict[mag] = (fault_id, prob)
 				#print("Max. prob.: %s (M=%.2f) %.2f" % (fault_id, mag, prob))
-				line_data = source_data[idx]
+				line_data = source_data[i]
 				if not max_source_data:
 					max_source_data = line_data.to_multi_line()
 				else:
 					max_source_data.append(line_data)
-
 
 	## Plot histogram of probabilities
 	"""
@@ -871,6 +881,8 @@ def plot_rupture_probabilities(source_model, prob_dict, pe_site_models, ne_site_
 			# TODO: add lake evidence
 
 			map.plot(fig_filespec=fig_filespec_max, dpi=100)
+
+	return mag_max_prob_id_dict
 
 
 def plot_rupture_intensity_map(source_model, source_id, ipe_name, region,
